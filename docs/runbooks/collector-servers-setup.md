@@ -2,14 +2,17 @@
 
 Design and reasons: `docs/plans/syslog-snmp-deployment.md`. This runbook is the hands-on part.
 
-Example addresses used below (replace with yours):
+Addresses used below. All three VMs are on one subnet, `192.168.108.0/24`:
 
-| VM | Role | IP | VLAN / port group |
-|---|---|---|---|
-| `moni-syslog` | syslog server | `10.10.10.51` | device management |
-| `moni-snmp` | SNMP server | `10.10.10.52` | device management |
-| `moni-app` | Monicomm (or `dev-ingest` until Monicomm exists) | `10.20.0.10` | application |
-| NTP | site time source | `10.10.10.1` | |
+| VM | Role | IP |
+|---|---|---|
+| `moni-app` | Monicomm (or `dev-ingest` until Monicomm exists) | `192.168.108.140` |
+| `moni-syslog` | syslog server | `192.168.108.141` |
+| `moni-snmp` | SNMP server | `192.168.108.142` |
+| NTP | site time source | `<ntp-ip>` (fill in) |
+
+Because `moni-app` shares the subnet with the collectors (and maybe with devices), the separation from the plan
+("Monicomm can't talk to devices") is enforced with host firewall rules on `moni-app` (step 5), not with VLANs.
 
 What runs where:
 
@@ -36,7 +39,7 @@ Output: `deploy/offline/dist/monicomm-collectors-<date>.tar` and `.tar.sha256`.
 On the build machine or an admin machine with `openssl`:
 
 ```bash
-./collector/pki/make-certs.sh 10.20.0.10 10.10.10.51 10.10.10.52
+./collector/pki/make-certs.sh 192.168.108.140 192.168.108.141 192.168.108.142
 ```
 
 The first argument must be exactly what the collectors use in `MONICOMM_INGEST_ADDRESS` (an IP here).
@@ -56,11 +59,10 @@ Create `moni-syslog` and `moni-snmp` (and `moni-app` if it doesn't exist yet):
 | Disk 1 (OS) | 40 GB | 40 GB |
 | Disk 2 (data, `/srv/monicomm`) | 500 GB (archive grows ~ syslog volume × 365 days, gzip ≈ 10:1) | 100 GB |
 | SCSI controller | VMware Paravirtual | same |
-| NIC | VMXNET3 on the device-management port group | same |
+| NIC | VMXNET3 on the `192.168.108.0/24` port group | same |
 
-- If the collectors must reach `moni-app` on another VLAN, either route between the VLANs (allow only TCP 6000
-  and 8443) or add a second VMXNET3 on the application port group.
-- `moni-app` gets **no** NIC on the device-management port group.
+- `moni-app` uses the same port group. If you later move it to its own VLAN, allow only TCP 6000 (and 8443
+  for the configurator) between the VLANs, and give `moni-app` no NIC on the device network.
 - Turn on vSphere HA for the cluster (restart on host failure). If you later add a second syslog/SNMP VM, add a VM-VM anti-affinity rule.
 - Mount the Ubuntu 24.04 Server ISO from a datastore (approved media).
 
@@ -74,9 +76,9 @@ network:
   version: 2
   ethernets:
     ens192:
-      addresses: [10.10.10.51/24]
-      routes: [{to: default, via: 10.10.10.254}]
-      nameservers: {addresses: [10.10.10.53]}
+      addresses: [192.168.108.141/24]
+      routes: [{to: default, via: <gateway-ip>}]
+      nameservers: {addresses: [<dns-ip>]}
 ```
 
 ```bash
@@ -84,7 +86,7 @@ sudo chmod 600 /etc/netplan/50-monicomm.yaml && sudo netplan apply
 sudo hostnamectl set-hostname moni-syslog
 ```
 
-## 5. Base OS setup (both VMs)
+## 5. Base OS setup (collector VMs; the firewall part also on `moni-app`)
 
 **Data disk** (check the device name with `lsblk` first; usually `/dev/sdb`):
 
@@ -99,22 +101,23 @@ sudo mount -a && df -h /srv/monicomm
 
 ```bash
 sudo vmware-toolbox-cmd timesync disable
-sudo sed -i 's/^#\?NTP=.*/NTP=10.10.10.1/' /etc/systemd/timesyncd.conf
+sudo sed -i 's/^#\?NTP=.*/NTP=<ntp-ip>/' /etc/systemd/timesyncd.conf
 sudo systemctl restart systemd-timesyncd
-timedatectl timesync-status      # "Server: 10.10.10.1", small offset
+timedatectl timesync-status      # "Server: <ntp-ip>", small offset
 sudo timedatectl set-timezone Asia/Jerusalem
 ```
 
 **Firewall** (`ufw` works here because the collectors use host networking).
-Replace `10.10.0.0/16` with your device-management subnets.
+The rules assume devices send from `192.168.108.0/24`. Add the same rule for every other subnet your devices
+send from (for example router loopbacks).
 
 On `moni-syslog`:
 
 ```bash
 sudo ufw default deny incoming
 sudo ufw allow from <admin-subnet> to any port 22 proto tcp
-sudo ufw allow from 10.10.0.0/16 to any port 514 proto udp
-sudo ufw allow from 10.10.0.0/16 to any port 514 proto tcp
+sudo ufw allow from 192.168.108.0/24 to any port 514 proto udp
+sudo ufw allow from 192.168.108.0/24 to any port 514 proto tcp
 sudo ufw enable
 ```
 
@@ -123,11 +126,30 @@ On `moni-snmp`:
 ```bash
 sudo ufw default deny incoming
 sudo ufw allow from <admin-subnet> to any port 22 proto tcp
-sudo ufw allow from 10.10.0.0/16 to any port 162 proto udp
+sudo ufw allow from 192.168.108.0/24 to any port 162 proto udp
 sudo ufw enable
 ```
 
-(When the configurator arrives in phase F, also allow TCP 8443 from `moni-app` only.)
+On `moni-app` (accept collector data only from the two collectors, and block management protocols
+toward devices, so Monicomm and the AI can't reach them even on a shared subnet):
+
+```bash
+sudo ufw default deny incoming
+sudo ufw allow from <admin-subnet> to any port 22 proto tcp
+sudo ufw allow from 192.168.108.141 to any port 6000 proto tcp
+sudo ufw allow from 192.168.108.142 to any port 6000 proto tcp
+sudo ufw allow from 192.168.108.0/24 to any port 443 proto tcp      # web UI for users, once Monicomm exists
+sudo ufw deny out to 192.168.108.0/24 port 161 proto udp           # SNMP
+sudo ufw deny out to 192.168.108.0/24 port 22 proto tcp            # SSH
+sudo ufw deny out to 192.168.108.0/24 port 23 proto tcp            # Telnet
+sudo ufw deny out to 192.168.108.0/24 port 830 proto tcp           # NETCONF
+sudo ufw enable
+```
+
+Repeat the `deny out` lines for every other subnet that has devices. `moni-app` only needs outbound TCP 8443 to
+`192.168.108.142` (configurator, phase F).
+
+(When the configurator arrives in phase F, also allow TCP 8443 on `moni-snmp` from `192.168.108.140` only.)
 
 ## 6. Install Docker and the collector (offline)
 
@@ -162,13 +184,13 @@ cd /opt/monicomm/collector/dev-ingest && sudo docker compose up -d
 ```
 
 It writes what it receives to `/opt/monicomm/collector/dev-ingest/data/<date>/{syslog,trap,snmp_metric}.jsonl`.
-Allow TCP 6000 from `10.10.10.51` and `10.10.10.52` only on this VM's firewall.
+The `moni-app` firewall rules from step 5 already limit TCP 6000 to the two collectors.
 
 ## 8. Configure and start the syslog server (`moni-syslog`)
 
 ```bash
 cd /opt/monicomm/collector/syslog-server
-sudo nano .env          # COLLECTOR_ID, MONICOMM_INGEST_ADDRESS=10.20.0.10:6000, buffer size
+sudo nano .env          # COLLECTOR_ID, MONICOMM_INGEST_ADDRESS=192.168.108.140:6000, buffer size
 sudo docker compose up -d
 sudo docker compose ps
 sudo docker compose logs --tail 50
@@ -197,7 +219,7 @@ sudo docker compose logs poller --tail 30    # "poller: 10-all.conf: N device(s)
 ```
 
 **Engine ID:** `TRAPD_ENGINE_ID` in `secrets/snmp_trap.env` is what every device needs in its inform config
-(Cisco `snmp-server engineID remote 10.10.10.52 <id without 0x>`, Junos `usm remote-engine <id without 0x>`).
+(Cisco `snmp-server engineID remote 192.168.108.142 <id without 0x>`, Junos `usm remote-engine <id without 0x>`).
 Choose it once. Changing it later breaks informs from every device.
 
 Check polling against one device before onboarding the rest:
@@ -219,7 +241,7 @@ ls /srv/monicomm/trapd-out/          # traps-<date>.jsonl
 ## 10. Onboard devices
 
 Use the templates in `docs/plans/syslog-snmp-deployment.md` §5 (Cisco IOS/IOS-XE, IOS-XR, Junos) with:
-syslog host `10.10.10.51`, SNMP ACL / inform target `10.10.10.52`, the `moni-poll` and `moni-trap`
+syslog host `192.168.108.141`, SNMP ACL / inform target `192.168.108.142`, the `moni-poll` and `moni-trap`
 passwords from step 9, and the engine ID. One device first, then a pilot group, then the rest. Run the
 checklist in §5.4 of the plan for each device, then add it to `inventory/devices.csv` and
 `sudo docker compose restart poller`.
@@ -244,7 +266,7 @@ checklist in §5.4 of the plan for each device, then add it to `inventory/device
 | Syslog arrives under the wrong IP | The device sends from another interface: set the source interface (`logging source-interface`, Junos `source-address`). |
 | Informs not acknowledged | Engine ID on the device ≠ `TRAPD_ENGINE_ID`, or user/passwords/protocols differ. `docker compose logs trapd` shows auth errors. `tcpdump -ni ens192 udp port 162`. |
 | Plain v3 traps dropped (not informs) | Add each device's engine ID to `TRAP_DEVICE_ENGINE_IDS` (`show snmp engineID` / `show snmp v3`), restart trapd. |
-| Poller errors "unknown user name" / "wrong digest" | `secrets/snmp_ro.env` doesn't match the device's `moni-poll` user, or the device ACL doesn't allow `10.10.10.52`. |
+| Poller errors "unknown user name" / "wrong digest" | `secrets/snmp_ro.env` doesn't match the device's `moni-poll` user, or the device ACL doesn't allow `192.168.108.142`. |
 | Poller errors on one table | That device doesn't support that MIB (normal for some platforms); other tables still work. |
 | Nothing reaches `moni-app` | `docker compose logs` shows TLS errors → wrong certs or `MONICOMM_INGEST_ADDRESS` doesn't match the ingest cert's IP. Connection refused → firewall / dev-ingest not running. Data waits in the disk buffer meanwhile. |
 | `image ... not found after load` during install | The VM's Docker didn't keep image digests on `docker load`. Use Docker Engine from the bundle (containerd image store), or ask the platform owner. |

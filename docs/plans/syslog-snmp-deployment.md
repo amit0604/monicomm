@@ -7,8 +7,8 @@
 > and firewalls**, plus the "configure devices" item from the hackathon slide (pre-change preview,
 > technician approval, one-click rollback).
 >
-> Device configs below are **templates**. Example addresses: syslog server `10.10.10.51`,
-> SNMP server `10.10.10.52`, NTP `10.10.10.1`, Monicomm `10.20.0.10`. Check every command against
+> Device configs below are **templates**. Example addresses: syslog server `192.168.108.141`,
+> SNMP server `192.168.108.142`, NTP `<ntp-ip>`, Monicomm `192.168.108.140`. Check every command against
 > the exact IOS / IOS-XE / IOS-XR / Junos version in the lab before rolling it out.
 
 ---
@@ -50,7 +50,7 @@
  │ MONICOMM (host C) – existing docker compose, internal networks only      │
  │  ingest (Vector) ─► Redis ─► worker ─► Postgres/Timescale                │
  │  api / web (approval UI, diff, rollback) ─► calls configurator API       │
- │  no route to device network, no device credentials                       │
+ │  blocked from devices (firewall), no device credentials                  │
  └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -58,8 +58,10 @@
 
 - **Collection survives Monicomm.** Upgrades, restarts or a broken Monicomm release don't lose
   syslog or traps. The collectors buffer to disk and catch up.
-- **Smaller attack surface.** Only the syslog and SNMP servers sit on the device management network.
-  Monicomm (web UI, LLM, user logins) has no route to devices and holds no SNMP or NETCONF credentials.
+- **Smaller attack surface.** Only the syslog and SNMP servers talk to devices. Monicomm (web UI, LLM,
+  user logins) is blocked from devices and holds no SNMP or NETCONF credentials. The current site uses one
+  flat subnet (`192.168.108.0/24`), so the block is host firewall rules on the Monicomm VM (§2.5). A separate
+  VLAN for Monicomm is stronger and can be added later without changing the deployments.
 - **Security fit.** The AI lives on a host that physically cannot write to devices. Writes need the
   SNMP server's `configurator`, which only accepts approved requests (§10).
 - **Independent life cycle.** The network team can own and patch the collectors. Other tools can
@@ -95,7 +97,7 @@ host). Keep them as two deployments either way, so they can be split later.
 - Monicomm is the **source of truth for the device inventory**. The SNMP server is the **source of
   truth for credentials**. Neither side holds the other's data.
 - Active discovery (ICMP/ARP sweeps, optional nmap for the Mapper) also has to run from the SNMP
-  server, because Monicomm has no route to the device network. Expose it as another configurator-style
+  server, because Monicomm is blocked from the devices. Expose it as another configurator-style
   API call (read-only). Design it in the Mapper's phase.
 
 ### 2.4 Compose sketch (each in its own folder, not final)
@@ -157,7 +159,9 @@ services:
 | 6000 | TCP | out | Monicomm |
 | 123 | UDP | out | NTP |
 
-**Monicomm (C):** in 443 from users, in 6000 from A and B only, out 8443 to B only. Nothing toward the device network.
+**Monicomm (C):** in 443 from users, in 6000 from A and B only, out 8443 to B only. Outbound SNMP (161),
+SSH (22), Telnet (23) and NETCONF (830) toward device subnets explicitly denied, because on the flat
+`192.168.108.0/24` LAN routing alone doesn't keep Monicomm away from devices (runbook step 5).
 
 ### 2.6 Secrets
 
@@ -170,11 +174,13 @@ services:
 
 The site has vSphere, so each deployment runs in its **own VM**. Starting sizes (adjust after the volume test):
 
-| VM | vCPU | RAM | Disks | NICs (port groups) |
+| VM | IP | vCPU | RAM | Disks |
 |---|---|---|---|---|
-| `moni-syslog` (A) | 4 | 8 GB | 40 GB OS + **separate data disk** for archive and buffer (start 500 GB, thin) | mgmt VLAN (devices) + app VLAN (to Monicomm), or one NIC on mgmt with a route to Monicomm |
-| `moni-snmp` (B) | 4 | 8 GB | 40 GB OS + 100 GB data (trapd state, buffer, config snapshots) | same as A |
-| `moni-app` (C, Monicomm) | per `PROJECT.md` §8 (GPU passthrough/vGPU if the LLM needs it) | | | app VLAN only, **no** port group on the device mgmt VLAN |
+| `moni-app` (C, Monicomm) | `192.168.108.140` | per `PROJECT.md` §8 (GPU passthrough/vGPU if the LLM needs it) | | |
+| `moni-syslog` (A) | `192.168.108.141` | 4 | 8 GB | 40 GB OS + **separate data disk** for archive and buffer (start 500 GB, thin) |
+| `moni-snmp` (B) | `192.168.108.142` | 4 | 8 GB | 40 GB OS + 100 GB data (trapd state, buffer, config snapshots) |
+
+All three are on one port group / subnet (`192.168.108.0/24`), one VMXNET3 NIC each.
 
 vSphere specifics:
 
@@ -185,14 +191,14 @@ vSphere specifics:
   drifting after vMotion or snapshot restore would break syslog correlation.
 - **Availability:** vSphere HA restarts A and B on another ESXi host if one fails. That is enough for phase 1;
   app-level HA (§8) comes later. If pairs are added, use a VM-VM **anti-affinity** rule so both copies never sit on the same ESXi host.
-- **Separation:** Monicomm's VM gets no vNIC on the device management VLAN. Enforce it with the port group
-  assignment and the firewall rules in §2.5, so the separation is real and not just a config choice.
+- **Separation:** on the shared subnet, enforce it with the `moni-app` firewall rules in §2.5. If Monicomm
+  later moves to its own VLAN, give its VM no vNIC on the device network and allow only TCP 6000/8443 between them.
 - **Snapshots:** take one before every upgrade of a collector bundle. Don't keep them for long on the syslog VM (its data disk grows fast). Back up the archive disk with the site's normal backup.
 - **Disk performance:** put the syslog data disk on storage that handles steady small writes. Thick provisioning is safer if the datastore is shared and tight on space.
 - **Bonus:** ESXi hosts and vCenter can send their own syslog to `moni-syslog`
-  (`esxcli system syslog config set --loghost=udp://10.10.10.51:514`, then `esxcli system syslog reload`)
+  (`esxcli system syslog config set --loghost=udp://192.168.108.141:514`, then `esxcli system syslog reload`)
   and SNMP to `moni-snmp`, so the virtual layer shows up in Monicomm too. vCenter API discovery for the Mapper
-  (VMs, hosts, vSwitches) would also run from `moni-snmp`, since Monicomm has no route to the management network.
+  (VMs, hosts, vSwitches) would also run from `moni-snmp`, since Monicomm is kept away from the management plane.
 
 ---
 
@@ -336,14 +342,14 @@ adjacency, IPsec tunnel up/down. SRX also: chassis cluster failover.
 ## 5. Device templates (onboarding)
 
 Apply with the existing change process: one device first, then a pilot group, then everything. Each
-template sets NTP, timestamps, source interface, syslog host (**10.10.10.51**), SNMPv3 read user,
-and the inform target (**10.10.10.52**).
+template sets NTP, timestamps, source interface, syslog host (**192.168.108.141**), SNMPv3 read user,
+and the inform target (**192.168.108.142**).
 
 ### 5.1 Cisco IOS / IOS-XE (switches and routers: Catalyst, ISR, ASR 1000, Catalyst 8000)
 
 ```
 ! --- time and log format ---
-ntp server 10.10.10.1
+ntp server <ntp-ip>
 clock timezone IST 2 0
 service timestamps log datetime msec localtime show-timezone year
 service sequence-numbers
@@ -351,7 +357,7 @@ service sequence-numbers
 ! --- syslog ---
 logging origin-id hostname
 logging source-interface Loopback0              ! add "vrf Mgmt-vrf" if logging via the mgmt VRF
-logging host 10.10.10.51 transport udp port 514 ! tcp is also supported; TLS on newer IOS-XE
+logging host 192.168.108.141 transport udp port 514 ! tcp is also supported; TLS on newer IOS-XE
 logging trap informational
 logging buffered 64000 informational
 !
@@ -366,7 +372,7 @@ archive
 !
 ! --- SNMPv3 read-only ---
 ip access-list standard MONI-SNMP
- permit 10.10.10.52
+ permit 192.168.108.142
 snmp-server view MONI-RO iso included
 snmp-server group MONI-RO-GRP v3 priv read MONI-RO access MONI-SNMP
 snmp-server group MONI-RO-GRP v3 priv context vlan- match prefix read MONI-RO access MONI-SNMP  ! switches only
@@ -375,9 +381,9 @@ snmp-server ifindex persist
 snmp-server trap-source Loopback0
 !
 ! --- informs (needs the SNMP server's engine ID) ---
-snmp-server engineID remote 10.10.10.52 <TRAPD_ENGINE_ID_HEX>
-snmp-server user moni-trap MONI-RO-GRP remote 10.10.10.52 v3 auth sha <AUTH> priv aes 128 <PRIV>
-snmp-server host 10.10.10.52 informs version 3 priv moni-trap
+snmp-server engineID remote 192.168.108.142 <TRAPD_ENGINE_ID_HEX>
+snmp-server user moni-trap MONI-RO-GRP remote 192.168.108.142 v3 auth sha <AUTH> priv aes 128 <PRIV>
+snmp-server host 192.168.108.142 informs version 3 priv moni-trap
 snmp-server enable traps snmp linkdown linkup coldstart warmstart authentication
 snmp-server enable traps config
 snmp-server enable traps entity
@@ -397,11 +403,11 @@ IOS-XR syntax is different. This template is a **starting point to verify in the
 the inform/remote-user lines. Start with traps on XR if informs give trouble.
 
 ```
-ntp server 10.10.10.1
+ntp server <ntp-ip>
 clock timezone IST Asia/Jerusalem
 service timestamps log datetime localtime msec show-timezone year
 !
-logging 10.10.10.51 vrf default severity info port default
+logging 192.168.108.141 vrf default severity info port default
 logging source-interface Loopback0
 logging hostnameprefix <hostname>
 !
@@ -410,7 +416,7 @@ snmp-server group MONI-RO-GRP v3 priv read MONI-RO
 snmp-server user moni-poll MONI-RO-GRP v3 auth sha clear <AUTH> priv aes 128 clear <PRIV>
 snmp-server ifindex persist
 snmp-server trap-source Loopback0
-snmp-server host 10.10.10.52 traps version 3 priv moni-trap
+snmp-server host 192.168.108.142 traps version 3 priv moni-trap
 snmp-server traps snmp linkup
 snmp-server traps snmp linkdown
 snmp-server traps config
@@ -426,19 +432,19 @@ Use `vrf <mgmt-vrf>` on the `logging` and `snmp-server host` lines if management
 
 ```
 # --- time and log format ---
-set system ntp server 10.10.10.1
+set system ntp server <ntp-ip>
 set system time-zone Asia/Jerusalem
 set system syslog time-format year millisecond
 #
 # --- syslog (RFC 5424 structured data) ---
-set system syslog host 10.10.10.51 any info
-set system syslog host 10.10.10.51 authorization info
-set system syslog host 10.10.10.51 interactive-commands info
-set system syslog host 10.10.10.51 change-log info
-set system syslog host 10.10.10.51 structured-data
-set system syslog host 10.10.10.51 source-address 10.0.0.1
+set system syslog host 192.168.108.141 any info
+set system syslog host 192.168.108.141 authorization info
+set system syslog host 192.168.108.141 interactive-commands info
+set system syslog host 192.168.108.141 change-log info
+set system syslog host 192.168.108.141 structured-data
+set system syslog host 192.168.108.141 source-address 10.0.0.1
 # if management-instance is enabled:
-# set system syslog host 10.10.10.51 routing-instance mgmt_junos
+# set system syslog host 192.168.108.141 routing-instance mgmt_junos
 #
 # --- SNMPv3 read-only ---
 set snmp engine-id use-mac-address
@@ -451,7 +457,7 @@ set snmp v3 vacm access group MONI-RO default-context-prefix security-model usm 
 # --- informs to the SNMP server ---
 set snmp v3 usm remote-engine <TRAPD_ENGINE_ID_HEX> user moni-trap authentication-sha authentication-password "<AUTH>"
 set snmp v3 usm remote-engine <TRAPD_ENGINE_ID_HEX> user moni-trap privacy-aes128 privacy-password "<PRIV>"
-set snmp v3 target-address MONI address 10.10.10.52
+set snmp v3 target-address MONI address 192.168.108.142
 set snmp v3 target-address MONI port 162
 set snmp v3 target-address MONI tag-list moni-tag
 set snmp v3 target-address MONI target-parameters MONI-TP
@@ -464,7 +470,7 @@ set snmp trap-options source-address 10.0.0.1
 
 Per platform:
 
-- **All:** restrict SNMP with a firewall filter on `lo0` (or the mgmt interface) that allows only `10.10.10.52` on UDP 161.
+- **All:** restrict SNMP with a firewall filter on `lo0` (or the mgmt interface) that allows only `192.168.108.142` on UDP 161.
 - **MX routers:** `default-context-prefix` above lets the poller read routing-instance data through SNMP contexts.
 - **SRX cluster:** each node uses its own `fxp0` address as the source. Poll and receive from both nodes.
 
@@ -508,7 +514,7 @@ per second. Default: **off**. If the team wants them:
 set security log mode stream
 set security log format sd-syslog
 set security log source-address 10.0.0.1
-set security log stream MONI-FLOW host 10.10.10.51
+set security log stream MONI-FLOW host 192.168.108.141
 set security log stream MONI-FLOW host port 5514
 # and on the policies to log: then log session-close
 ```
@@ -566,7 +572,7 @@ version, but don't plan on SNMP to configure Juniper.
 
 - `CLAUDE.md` rule 3 and `PROJECT.md` §3 AI rule 3: **AI tools stay read-only.** The chat assistant
   ("ChatIAF") can explain a change, predict impact and draft it, but can't apply it. It runs on the
-  Monicomm host, which has no route to devices. Only an approved request through Monicomm's approval UI
+  Monicomm host, which is firewalled off from devices. Only an approved request through Monicomm's approval UI
   can call the configurator, and the LLM has no tool that reaches that API.
 - The configurator rejects any request without a valid approval ID, and logs everything locally even if Monicomm is lost.
 - Write credentials (Cisco `MONI-RW` group, NETCONF user) exist only in the configurator.
@@ -576,7 +582,7 @@ Cisco write user, restricted to the OIDs we SET:
 
 ```
 ip access-list standard MONI-SNMP-RW
- permit 10.10.10.52
+ permit 192.168.108.142
 snmp-server view MONI-RW 1.3.6.1.2.1.2.2.1.7 included          ! ifAdminStatus
 snmp-server view MONI-RW 1.3.6.1.2.1.31.1.1.1.18 included      ! ifAlias
 snmp-server view MONI-RW 1.3.6.1.4.1.9.9.68.1.2.2.1.2 included ! vmVlan
@@ -606,7 +612,7 @@ snmp-server file-transfer access-group MONI-SNMP-RW protocol scp
 | Real OS behavior | **containerlab** (or GNS3/EVE-NG) with vJunos-switch / vJunos-router / vSRX and Cisco IOL / Cat8000v / XRd. Licensed images come in on approved media. |
 | Syslog load | `logger` / `loggen` replaying captured Cisco, IOS-XR and Junos lines at the target EPS, including a "routing storm" burst |
 | Trap tests | `snmptrap` / `snmpinform` from net-snmp, plus real link and BGP-peer flaps in the lab |
-| Separation check | Monicomm host has no route to the lab devices; everything still works through the collectors |
+| Separation check | Monicomm host cannot reach the lab devices on 161/22/23/830; everything still works through the collectors |
 | Air-gap check | All three hosts with outbound internet removed |
 
 Test cases: each sample line in §3.3 parses to the right event; a 3164 line without a year gets the right
@@ -652,7 +658,7 @@ A–E are read-only and safe. F touches device config and goes last, behind its 
 
 1. Device list: which Cisco families (IOS, IOS-XE, IOS-XR, NX-OS, ASA/FTD) and Juniper families (EX, QFX, MX, SRX), and which OS versions?
 2. How are routers managed: out-of-band, mgmt VRF or in-band? Which subnets?
-3. vSphere (§2.7): which cluster and datastore, which port groups/VLANs for mgmt and app networks, and is vSphere HA enough or is app-level HA needed?
+3. vSphere (§2.7): which cluster and datastore? Keep the flat `192.168.108.0/24` or move Monicomm to its own VLAN later? Is vSphere HA enough or is app-level HA needed?
 4. Is there an NTP server inside the closed network? An internal CA for the mTLS certificates?
 5. Can every device do SNMPv3 with SHA + AES-128? Any v2c-only legacy devices?
 6. Expected syslog volume (average and burst) and number of devices per role.

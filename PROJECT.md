@@ -95,7 +95,7 @@ same data store and the same local LLM service.
 ```
   Network devices ──► syslog server VM  (own deployment)  ─┐  mTLS
   (mgmt network)  ◄─► SNMP server VM    (own deployment)  ─┤  (events, metrics; configurator API)
-                     ┌──────────────── Monicomm VM (no route to devices) ──────────────┐
+                     ┌──────────────── Monicomm VM (blocked from devices) ─────────────┐
                      │ ingest (Vector) ◄───────────────────────────────────────────────┘
                      │      │                                                          │
                      │      ▼                                                          │
@@ -114,7 +114,8 @@ same data store and the same local LLM service.
 their own Docker deployment on their own VM on the management network. They receive and poll device data,
 buffer it to disk, and forward it to Monicomm over mutual TLS. The SNMP server holds all device credentials
 and runs the `configurator`, the only component allowed to change device config, and only on a
-human-approved request. Monicomm has no route to network devices. Full plan:
+human-approved request. Monicomm is blocked from network devices (host firewall on the shared
+`192.168.108.0/24` subnet; a separate VLAN later). Full plan:
 `docs/plans/syslog-snmp-deployment.md`. Setup: `docs/runbooks/collector-servers-setup.md`.
 Event contract between the collectors and Monicomm `ingest`: `collector/README.md`.
 
@@ -445,7 +446,7 @@ and a one-line entry in the decision log below.
 - Login required for everything. Roles: `admin`, `technician`, `viewer`. **PROPOSED:** local users first, LDAP/AD later if the closed network has it.
 - HTTPS inside the network (self-signed or internal CA certificate).
 - SNMP v3 preferred. Credentials (SNMP communities, hypervisor/API passwords) stored encrypted, never in git, never in logs, never sent to the LLM.
-- Device credentials live only on the SNMP server. Monicomm and the LLM run on a VM with no route to network devices.
+- Device credentials live only on the SNMP server. Monicomm and the LLM run on a VM that is firewalled off from network devices.
 - Uploaded PCAPs and logs can contain sensitive data: access control per user/role, retention policy, delete on request.
 - Audit log of who viewed or ran what (including AI tool calls).
 
