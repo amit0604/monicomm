@@ -5,18 +5,17 @@ plans/incident-analyzer/reroute-plan.md for the contract. Recommendation only: n
 touches a device.
 """
 
-import heapq
-from collections.abc import Callable
 from datetime import UTC, datetime
 from itertools import combinations
 
+from app.core import graph
 from app.modules.investigator.topology import _IFINDEX, Topology, ifkey
 
 UNKNOWN_COST = 65535  # OSPF max metric: a link of unknown speed is a last resort
 MAX_DEVICE_PAIRS = 10
 _RANK = {"ok": 0, "unknown": 1, "warning": 2, "critical": 3}
 
-Step = tuple[str, str, int]  # (from node, to node, edge index)
+Step = graph.Step  # edge key = index into Topology.edges()
 Link = tuple[str, str | None]  # (device, interface) as the failure event names it
 
 
@@ -69,8 +68,12 @@ def compute(
         neighbors = sorted({n for n, _ in full[dev]} - down_nodes)
         # ponytail: first 10 neighbor pairs only; no flow data says which pairs matter
         for src, dst in list(combinations(neighbors, 2))[:MAX_DEVICE_PAIRS]:
-            through = _dijkstra(
-                full, costs, src, dst, lambda j, d=dev: d in (edges[j]["a"], edges[j]["b"])
+            through = graph.shortest_path(
+                full,
+                src,
+                dst,
+                costs.__getitem__,
+                lambda j, d=dev: d in (edges[j]["a"], edges[j]["b"]),
             )
             before = through[1] if through else []
             flows.append(
@@ -120,40 +123,10 @@ def _find(topology: Topology, edges: list[dict], device: str, interface: str | N
     return pair[0] if len(pair) == 1 else None  # e.g. "ifIndex 24" on a single link
 
 
-def _adjacency(edges: list[dict], down_edges: set[int], down_nodes: set[str]) -> dict:
-    adj: dict[str, list[tuple[str, int]]] = {}
-    for i, e in enumerate(edges):
-        a, b = e["a"], e["b"]
-        for n in (a, b):
-            if n not in down_nodes:
-                adj.setdefault(n, [])
-        if i in down_edges or a in down_nodes or b in down_nodes:
-            continue
-        adj[a].append((b, i))
-        adj[b].append((a, i))
-    return adj
-
-
-def _dijkstra(
-    adj: dict,
-    costs: list[int],
-    src: str,
-    dst: str,
-    allowed: Callable[[int], bool] = lambda _: True,
-) -> tuple[int, list[Step]] | None:
-    heap: list[tuple[int, str, list[Step]]] = [(0, src, [])]
-    done: set[str] = set()
-    while heap:
-        cost, node, path = heapq.heappop(heap)
-        if node in done:
-            continue
-        done.add(node)
-        if node == dst:
-            return cost, path
-        for nxt, i in adj.get(node, []):
-            if nxt not in done and allowed(i):
-                heapq.heappush(heap, (cost + costs[i], nxt, [*path, (node, nxt, i)]))
-    return None
+def _adjacency(edges: list[dict], down_edges: set[int], down_nodes: set[str]) -> graph.Adjacency:
+    nodes = {e[n] for e in edges for n in ("a", "b")} - down_nodes
+    alive = ((e["a"], e["b"], i) for i, e in enumerate(edges) if i not in down_edges)
+    return graph.adjacency(nodes, alive)
 
 
 def _util(edge: dict, moved: float | None) -> float | None:
@@ -161,12 +134,6 @@ def _util(edge: dict, moved: float | None) -> float | None:
     if speed is None or load is None or moved is None:
         return None  # PROJECT.md 2.3: what we can't see is unknown, not safe
     return round((load + moved) / (speed * 1e6), 4)
-
-
-def _status(util: float | None, warn: float) -> str:
-    if util is None:
-        return "unknown"
-    return "critical" if util >= 1.0 else "warning" if util >= warn else "ok"
 
 
 def _path(edges: list[dict], costs: list[int], steps: list[Step], moved, warn: float) -> dict:
@@ -184,7 +151,7 @@ def _path(edges: list[dict], costs: list[int], steps: list[Step], moved, warn: f
                 "speed_mbps": e["speed_mbps"],
                 "load_bps": e["load_bps"],
                 "util_after": util,
-                "status": _status(util, warn),
+                "status": graph.util_status(util, warn),
             }
         )
     utils = [h["util_after"] for h in hops if h["util_after"] is not None]
@@ -197,7 +164,7 @@ def _path(edges: list[dict], costs: list[int], steps: list[Step], moved, warn: f
 
 
 def _flow(edges, costs, alive, src, dst, moved, reason, before, warn) -> dict:
-    found = _dijkstra(alive, costs, src, dst)
+    found = graph.shortest_path(alive, src, dst, costs.__getitem__)
     predicted = _path(edges, costs, found[1], moved, warn) if found else None
     recommended = None
     if predicted and predicted["status"] in ("warning", "critical"):
@@ -209,7 +176,9 @@ def _flow(edges, costs, alive, src, dst, moved, reason, before, warn) -> dict:
         while lo <= hi:
             mid = (lo + hi) // 2
             t = limits[mid]
-            if hit := _dijkstra(alive, costs, src, dst, lambda i, t=t: utils.get(i, 2e9) <= t):
+            if hit := graph.shortest_path(
+                alive, src, dst, costs.__getitem__, lambda i, t=t: utils.get(i, 2e9) <= t
+            ):
                 best, hi = hit, mid - 1
             else:
                 lo = mid + 1
@@ -247,28 +216,11 @@ def _pct(util: float) -> str:
     return f"{util * 100:.0f} %"
 
 
-def _components(adj: dict) -> list[set[str]]:
-    seen: set[str] = set()
-    out = []
-    for start in sorted(adj):
-        if start in seen:
-            continue
-        comp, stack = set(), [start]
-        while stack:
-            n = stack.pop()
-            if n not in comp:
-                comp.add(n)
-                stack.extend(m for m, _ in adj[n])
-        seen |= comp
-        out.append(comp)
-    return out
-
-
 def _isolated(full: dict, alive: dict, down_nodes: set[str]) -> list[str]:
     """Per LLDP island: everything cut off from its largest surviving piece."""
-    after = _components(alive)
+    after = graph.components(alive)
     out: set[str] = set()
-    for before in _components(full):
+    for before in graph.components(full):
         if pieces := [c for c in after if c <= before]:
             main = min(pieces, key=lambda c: (-len(c), sorted(c)))
             out |= before - main - down_nodes

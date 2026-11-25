@@ -14,7 +14,8 @@ export function RiskPill({ risk }: { risk: Risk }) {
 function UtilPill({ pct }: { pct: number | null }) {
   const { t } = useI18n();
   if (pct === null) return <StatusPill status="neutral" label={t("analyzer.status.neutral")} />;
-  const status: Status = pct > 100 ? "critical" : pct >= 80 ? "warning" : "ok";
+  // same rule as api/app/core/graph.py util_status (default MONICOMM_LINK_UTIL_WARN=0.8)
+  const status: Status = pct >= 100 ? "critical" : pct >= 80 ? "warning" : "ok";
   return <StatusPill status={status} label={`${pct.toFixed(1)}%`} />;
 }
 

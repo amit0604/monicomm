@@ -57,6 +57,12 @@ GEMINI_HOST = "https://generativelanguage.googleapis.com"  # airgap: allow
 GEMINI_URL = GEMINI_HOST + "/v1beta/models/{model}:generateContent"
 
 
+def model_name(settings: Settings | None = None) -> str:
+    """The model that `chat()` uses right now, for "answered by" labels."""
+    settings = settings or llm_settings.current()
+    return settings.gemini_model if settings.llm_provider == "gemini" else settings.llm_model
+
+
 async def chat(messages: list[dict], settings: Settings | None = None) -> str:
     """Send a chat to the configured model and return the reply text.
 

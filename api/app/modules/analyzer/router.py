@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.core.config import get_settings
 from app.modules.analyzer import parse as parser
 from app.modules.analyzer import service
 from app.modules.analyzer.models import (
@@ -62,7 +63,7 @@ async def parse(body: ParseIn, source: SourceDep) -> ParseOut:
 @router.post("/reports", status_code=201)
 def create_report(body: ReportIn, source: SourceDep, store: StoreDep) -> Report:
     try:
-        report = simulate(source.topology(), body.change)
+        report = simulate(source.topology(), body.change, get_settings().link_util_warn)
     except UnknownTarget as e:
         raise HTTPException(422, str(e) or "unknown device or interface") from None
     store.save(report)

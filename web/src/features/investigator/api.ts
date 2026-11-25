@@ -109,23 +109,10 @@ export interface IncidentPatch {
   status?: "closed" | "open";
 }
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+import { ApiError, request as call } from "../../lib/api";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + path, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  if (!res.ok) throw new ApiError(res.status, `Request failed (${res.status})`);
-  return (await res.json()) as T;
-}
+export { ApiError };
+const request = <T>(path: string, init?: RequestInit) => call<T>(BASE + path, init);
 
 export const listIncidents = () => request<IncidentSummary[]>("/incidents");
 

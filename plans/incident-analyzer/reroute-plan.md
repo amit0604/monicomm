@@ -25,7 +25,7 @@ After a failure the technician doesn't know where the traffic went or whether th
 | D1 | Show predicted path + a recommended path when the predicted one is overloaded |
 | D2 | Load moved = the failed link's last measured rate (from interface counters). Device failure: connectivity and paths between its neighbors, load unknown (no flow data) |
 | D3 | Link cost = `ref_bw / ifHighSpeed` (OSPF-style, min 1), `MONICOMM_INVESTIGATOR_REF_BW_MBPS` default 100000. Real configured costs are unknown, stated in every result |
-| D4 | Warning at ≥ 80 % (`MONICOMM_INVESTIGATOR_UTIL_WARN=0.8`), critical at ≥ 100 % |
+| D4 | Warning at ≥ 80 % (`MONICOMM_LINK_UTIL_WARN=0.8`, shared with the Analyzer), critical at ≥ 100 % |
 | D5 | Computed automatically on every incident update that has a link or device down |
 | D6 | UI: "Rerouting" section in the incident detail: small before/after SVG path graph + hop list with utilization bars |
 | D7 | Unknown speed or load → status "unknown", never "ok" (PROJECT.md 2.3 rule: what we can't see is unknown, not safe) |
@@ -68,7 +68,7 @@ Device failure: flows for pairs of its neighbors (≤ 10 pairs), `load_bps` null
 
 ### Incident field
 `incident["reroute"]` = the dict above or null. Set by the correlator when it rebuilds an incident.
-Settings: `investigator_ref_bw_mbps: float = 100000`, `investigator_util_warn: float = 0.8`.
+Settings: `investigator_ref_bw_mbps: float = 100000`, `link_util_warn: float = 0.8`.
 
 ## Phase 1: Topology rates + reroute engine (status: DONE)
 - [x] `topology.py`: speed, rates, `edges()`; tests (rate from two samples, counter wrap, missing speed)

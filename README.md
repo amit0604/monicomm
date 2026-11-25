@@ -18,10 +18,11 @@ Open http://localhost:8080. Add the local LLM with `docker compose --profile llm
 |---|---|---|
 | Dashboard | Built, on demo data | `api/app/modules/dashboard/`, `web/src/features/dashboard/` |
 | Chat AI (ChatIAF) | Built: in-browser prototype, plus a live API backend | `api/app/modules/chat/`, `web/src/features/chat/` |
-| Analyzer | Not started | |
-| Incident Investigator | Built: live incident analyzer | `api/app/modules/investigator/`, `web/src/features/investigator/` |
+| Analyzer | Built: change impact ("what if") simulation, on demo topology | `api/app/modules/analyzer/`, `web/src/features/analyzer/` |
+| Incident Investigator | Built: live incident analyzer, with predicted and recommended rerouting | `api/app/modules/investigator/`, `web/src/features/investigator/` |
 | Mapper | Not started | |
 | Catchup (PCAP) | Built | `api/app/modules/pcap/`, `web/src/features/pcap/` |
+| Login and Admin (platform) | Built: local users, dev-only model settings page | `api/app/core/auth.py`, `api/app/modules/admin/`, `web/src/features/{auth,admin}/` |
 
 The collectors (syslog and SNMP servers) are separate deployments in `collector/`, each with its own README.
 
@@ -29,6 +30,10 @@ The collectors (syslog and SNMP servers) are separate deployments in `collector/
   to use `POST /api/v1/chat` (the local LLM over current Monicomm data).
 - **Incident Investigator input:** set `MONICOMM_INVESTIGATOR_INGEST_DIR` and mount the collectors' dev-ingest
   directory in `docker-compose.yml` (see the comment there). Empty = listener off.
+- **Login:** off by default (`MONICOMM_AUTH_PROVIDER=none`). For local users set it to `local` and create the first
+  admin with `docker compose exec api python -m app.create_user admin`.
+- **Shared code:** graph and link-load logic for the Analyzer and Investigator is in `api/app/core/graph.py`;
+  web API calls go through `web/src/lib/api.ts`.
 - **Language:** English by default; the top bar switches to Hebrew. All UI text lives in `web/src/i18n/`.
 
 ## Develop

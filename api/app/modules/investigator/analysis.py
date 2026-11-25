@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.ai import llm_client
-from app.core.config import get_settings
 
 PROMPT_FILE = Path(__file__).resolve().parents[2] / "ai" / "prompts" / "investigator_root_cause.md"
 MAX_EVENTS = 200
@@ -65,6 +64,6 @@ async def analyze(incident: dict) -> dict:
         "root_cause": str(data.get("root_cause") or ""),
         "impact": str(data.get("impact") or ""),
         "sources": list(dict.fromkeys(s for s in sources if isinstance(s, str) and s in known)),
-        "model": get_settings().llm_model,
+        "model": llm_client.model_name(),
         "created_at": datetime.now(UTC).isoformat(),
     }

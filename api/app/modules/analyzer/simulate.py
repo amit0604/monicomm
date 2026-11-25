@@ -6,9 +6,9 @@ point of failure, how risky is it, when is the quietest hour, and how to roll ba
 """
 
 import secrets
-from collections import deque
 from datetime import UTC, datetime
 
+from app.core import graph
 from app.modules.analyzer.models import (
     Affected,
     Change,
@@ -28,27 +28,13 @@ def _label(link: Link) -> str:
     return f"{link.a.device} {link.a.interface} ↔ {link.b.device} {link.b.interface}"
 
 
-def _adjacency(nodes: set[str], links: list[Link]) -> dict[str, list[tuple[str, str]]]:
-    adj: dict[str, list[tuple[str, str]]] = {n: [] for n in nodes}
-    for link in links:
-        if link.a.device in adj and link.b.device in adj:
-            adj[link.a.device].append((link.b.device, link.id))
-            adj[link.b.device].append((link.a.device, link.id))
-    return adj
+def _graph(nodes: set[str], links: list[Link]) -> graph.Adjacency:
+    return graph.adjacency(nodes, ((x.a.device, x.b.device, x.id) for x in links))
 
 
 def _hops(nodes: set[str], links: list[Link], cores: set[str]) -> dict[str, int]:
     """Hop distance to the nearest core node, for every node that has a path to core."""
-    adj = _adjacency(nodes, links)
-    dist = dict.fromkeys(cores & nodes, 0)
-    queue = deque(dist)
-    while queue:
-        cur = queue.popleft()
-        for nxt, _ in adj[cur]:
-            if nxt not in dist:
-                dist[nxt] = dist[cur] + 1
-                queue.append(nxt)
-    return dist
+    return graph.hops(_graph(nodes, links), cores)
 
 
 def _reach(nodes: set[str], links: list[Link], cores: set[str]) -> set[str]:
@@ -61,22 +47,8 @@ def _n(count: int, word: str) -> str:
 
 def _path(nodes: set[str], links: list[Link], src: str, dst: set[str]) -> list[str]:
     """Link ids of the shortest path (by hops) from src to the nearest node in dst."""
-    adj = _adjacency(nodes, links)
-    prev: dict[str, tuple[str, str] | None] = {src: None}
-    queue = deque([src])
-    while queue:
-        cur = queue.popleft()
-        if cur in dst:
-            out = []
-            while prev[cur] is not None:
-                cur, link_id = prev[cur]
-                out.append(link_id)
-            return out[::-1]
-        for nxt, link_id in adj[cur]:
-            if nxt not in prev:
-                prev[nxt] = (cur, link_id)
-                queue.append(nxt)
-    return []
+    found = graph.shortest_path(_graph(nodes, links), src, dst)
+    return [link_id for _, _, link_id in found[1]] if found else []
 
 
 def _new_spofs(before, after, cores: set[str], by_id: dict[str, Link]) -> list[Spof]:
@@ -128,7 +100,8 @@ def _spof_text(spofs: list[Spof]) -> str:
     return f"{len(spofs)} new single point{plural} of failure ({names})"
 
 
-def simulate(topo: Topology, change: Change) -> Report:
+def simulate(topo: Topology, change: Change, util_warn: float = 0.8) -> Report:
+    """`util_warn` = MONICOMM_LINK_UTIL_WARN (0.8 = 80 %); 100 % or more is critical."""
     nodes = {n.id: n for n in topo.nodes}
     by_id = {link.id: link for link in topo.links}
     node = nodes.get(change.device)
@@ -242,15 +215,17 @@ def simulate(topo: Topology, change: Change) -> Report:
             after.append(final[lid])
         reroutes.append(Reroute(link=link.id, via=via, load_mbps=load, after=after))
 
-    over_80 = over_100 = 0
+    over_warn = over_100 = 0
     for la in final.values():  # known load only grows, so the last value per link is the total
         unsure = la.link in partly_unknown
-        if la.util_after is not None and la.util_after >= 80:
-            status = "critical" if la.util_after > 100 else "warning"
+        status = graph.util_status(
+            None if la.util_after is None else la.util_after / 100, util_warn
+        )
+        if status in ("warning", "critical"):
             detail = f"{la.util_before}% → {la.util_after}% after reroute"
             detail += " plus load of unknown size" if unsure else ""
-            over_80 += 1
-            over_100 += la.util_after > 100
+            over_warn += 1
+            over_100 += status == "critical"
         elif unsure:
             status, detail = "neutral", "utilization after reroute unknown"
         else:
@@ -282,7 +257,7 @@ def simulate(topo: Topology, change: Change) -> Report:
 
     if has("node") or has("service") or over_100:
         risk = "high"
-    elif has("endpoints") or over_80 or new_spofs or unknowns:
+    elif has("endpoints") or over_warn or new_spofs or unknowns:
         risk = "medium"
     else:
         risk = "low"
@@ -291,7 +266,7 @@ def simulate(topo: Topology, change: Change) -> Report:
     hosts = sum(nodes[a.id].endpoints for a in affected if a.kind == "endpoints")
     summary = (
         f"{_n(n_lost, 'device')} and {_n(hosts, 'host')} cut off from core; "
-        f"{_n(len(reroutes), 'link')} rerouted ({over_80} at 80% or more); "
+        f"{_n(len(reroutes), 'link')} rerouted ({over_warn} at {util_warn * 100:g}% or more); "
         f"{_spof_text(new_spofs)}."
     )
     now = datetime.now(UTC)

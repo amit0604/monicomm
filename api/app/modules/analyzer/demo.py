@@ -12,31 +12,30 @@ import math
 from datetime import UTC, datetime
 
 from app.modules.analyzer.models import End, Link, Node, Topology
+from app.modules.dashboard.demo import ROWS
 
-A, B = "Site A", "Site B"
-
-# id, type, role, vendor, site, endpoints, services
+# id, role, endpoints, services. Type, vendor and site come from the Dashboard demo (one list).
 NODES = [
-    ("DEMO-core-sw-01", "switch", "core", "Cisco", A, 0, []),
-    ("DEMO-core-sw-02", "switch", "core", "Cisco", A, 0, []),
-    ("DEMO-dist-sw-01", "switch", "distribution", "Cisco", A, 0, []),
-    ("DEMO-dist-sw-02", "switch", "distribution", "Juniper", A, 0, []),
-    ("DEMO-acc-sw-01", "switch", "access", "Cisco", A, 40, []),
-    ("DEMO-acc-sw-02", "switch", "access", "Cisco", A, 32, []),
-    ("DEMO-acc-sw-03", "switch", "access", "Juniper", B, 24, []),
-    ("DEMO-acc-sw-04", "switch", "access", "Juniper", B, 18, []),
-    ("DEMO-fw-srx-01", "firewall", "edge", "Juniper", A, 0, []),
-    ("DEMO-fw-srx-02", "firewall", "edge", "Juniper", B, 0, []),
-    ("DEMO-edge-rtr-01", "router", "edge", "Cisco", A, 0, []),
-    ("DEMO-edge-rtr-02", "router", "edge", "Cisco", B, 0, []),
-    ("DEMO-wan-mx-01", "router", "edge", "Juniper", A, 0, []),
-    ("DEMO-wan-mx-02", "router", "edge", "Juniper", B, 0, []),
-    ("DEMO-srv-dns-01", "server", "other", None, A, 0, ["dns"]),
-    ("DEMO-srv-ntp-01", "server", "other", None, A, 0, ["ntp"]),
-    ("DEMO-ap-101", "access_point", "other", "Cisco", A, 12, []),
-    ("DEMO-ap-102", "access_point", "other", "Cisco", A, 9, []),
-    ("DEMO-ap-201", "access_point", "other", "Cisco", B, 7, []),
-    ("DEMO-ap-202", "access_point", "other", "Cisco", B, 5, []),
+    ("DEMO-core-sw-01", "core", 0, []),
+    ("DEMO-core-sw-02", "core", 0, []),
+    ("DEMO-dist-sw-01", "distribution", 0, []),
+    ("DEMO-dist-sw-02", "distribution", 0, []),
+    ("DEMO-acc-sw-01", "access", 40, []),
+    ("DEMO-acc-sw-02", "access", 32, []),
+    ("DEMO-acc-sw-03", "access", 24, []),
+    ("DEMO-acc-sw-04", "access", 18, []),
+    ("DEMO-fw-srx-01", "edge", 0, []),
+    ("DEMO-fw-srx-02", "edge", 0, []),
+    ("DEMO-edge-rtr-01", "edge", 0, []),
+    ("DEMO-edge-rtr-02", "edge", 0, []),
+    ("DEMO-wan-mx-01", "edge", 0, []),
+    ("DEMO-wan-mx-02", "edge", 0, []),
+    ("DEMO-srv-dns-01", "other", 0, ["dns"]),
+    ("DEMO-srv-ntp-01", "other", 0, ["ntp"]),
+    ("DEMO-ap-101", "other", 12, []),
+    ("DEMO-ap-102", "other", 9, []),
+    ("DEMO-ap-201", "other", 7, []),
+    ("DEMO-ap-202", "other", 5, []),
 ]
 
 # Interfaces that exist on a device but have no known neighbor (spare ports).
@@ -101,17 +100,18 @@ class DemoTopology:
                     hourly_util_pct=None if util is None else _hourly(util),
                 )
             )
+        rows = {r.name: r for r in ROWS}
         nodes = [
             Node(
                 id=id_,
-                type=type_,
+                type=rows[id_].type,
                 role=role,
-                vendor=vendor,
-                site=site,
+                vendor=rows[id_].vendor,
+                site=rows[id_].site,
                 interfaces=sorted(ifaces[id_]),
                 endpoints=endpoints,
                 services=services,
             )
-            for id_, type_, role, vendor, site, endpoints, services in NODES
+            for id_, role, endpoints, services in NODES
         ]
         return Topology(source="demo", as_of=datetime.now(UTC), nodes=nodes, links=links)

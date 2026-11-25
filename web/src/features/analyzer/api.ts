@@ -95,36 +95,10 @@ export interface Report extends ReportSummary {
   data_used: string[];
 }
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-    /** The server's reason, when it sent one (e.g. why a parse failed). */
-    readonly detail?: string,
-  ) {
-    super(message);
-  }
-}
+import { ApiError, request as call } from "../../lib/api";
 
-// FastAPI sends {"detail": "..."}; the plan also allows {"detail": {"detail": "..."}}.
-function reason(body: unknown): string | undefined {
-  const d = (body as { detail?: unknown } | null)?.detail;
-  if (typeof d === "string") return d;
-  const inner = (d as { detail?: unknown; message?: unknown } | null)?.detail;
-  return typeof inner === "string" ? inner : undefined;
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + path, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  if (!res.ok) {
-    const body: unknown = await res.json().catch(() => null);
-    throw new ApiError(res.status, `Request failed (${res.status})`, reason(body));
-  }
-  return (await res.json()) as T;
-}
+export { ApiError };
+const request = <T>(path: string, init?: RequestInit) => call<T>(BASE + path, init);
 
 export const getTopology = () => request<Topology>("/topology");
 

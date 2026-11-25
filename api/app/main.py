@@ -8,9 +8,9 @@ from fastapi import FastAPI
 
 from app.core import auth
 from app.core.config import get_settings
-from app.modules.analyzer.router import router as analyzer_router
 from app.modules.admin.router import router as admin_router
 from app.modules.admin.users import router as admin_users_router
+from app.modules.analyzer.router import router as analyzer_router
 from app.modules.chat.router import router as chat_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.investigator.router import router as investigator_router
@@ -43,7 +43,7 @@ async def lifespan(_app: FastAPI):
             Correlator(
                 window_s=settings.investigator_window_s,
                 ref_bw_mbps=settings.investigator_ref_bw_mbps,
-                util_warn=settings.investigator_util_warn,
+                util_warn=settings.link_util_warn,
             ),
             IncidentStore(settings.investigator_data_dir),
             settings.investigator_poll_s,

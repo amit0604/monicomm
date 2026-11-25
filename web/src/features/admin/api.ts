@@ -1,4 +1,6 @@
 // Mirrors api/app/modules/admin/router.py. The API key is sent, never received.
+import { ApiError, request } from "../../lib/api";
+
 export interface LLMView {
   provider: "ollama" | "gemini";
   base_url: string;
@@ -25,7 +27,7 @@ export class AdminError extends Error {
   }
 }
 
-function codeOf(status: number, detail: unknown): ErrorCode {
+function codeOf(status: number, detail: string | undefined): ErrorCode {
   if (status === 401 || status === 403) return "access";
   if (status === 422) return "invalid";
   if (detail === "key_missing" || detail === "external_url") return detail;
@@ -33,14 +35,14 @@ function codeOf(status: number, detail: unknown): ErrorCode {
 }
 
 async function call<T>(method: string, path = "", form?: LLMForm): Promise<T> {
-  const res = await fetch(`/api/v1/admin/llm${path}`, {
-    method,
-    headers: form && { "content-type": "application/json" },
-    body: form && JSON.stringify(form),
-  });
-  if (res.ok) return (await res.json()) as T;
-  const body = (await res.json().catch(() => null)) as { detail?: unknown } | null;
-  throw new AdminError(codeOf(res.status, body?.detail));
+  try {
+    return await request<T>(`/api/v1/admin/llm${path}`, {
+      method,
+      body: form && JSON.stringify(form),
+    });
+  } catch (e) {
+    throw e instanceof ApiError ? new AdminError(codeOf(e.status, e.detail)) : e;
+  }
 }
 
 export const llmApi = {

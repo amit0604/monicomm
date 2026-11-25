@@ -5,7 +5,7 @@ import pytest
 
 from app.ai import llm_client
 from app.ai.llm_client import ExternalEndpointError, validate_llm_url
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 
 
 @pytest.mark.parametrize(
@@ -187,3 +187,13 @@ def test_gemini_refused_when_env_not_set(monkeypatch):
     with pytest.raises(ExternalEndpointError):
         asyncio.run(llm_client.chat([]))
     get_settings.cache_clear()
+
+
+@pytest.mark.parametrize(
+    ("provider", "expected"), [("ollama", "qwen2.5:7b"), ("gemini", "gemini-2.5-flash")]
+)
+def test_model_name_follows_the_provider(provider, expected):
+    settings = Settings(
+        llm_provider=provider, llm_model="qwen2.5:7b", gemini_model="gemini-2.5-flash"
+    )
+    assert llm_client.model_name(settings) == expected

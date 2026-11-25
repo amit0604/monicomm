@@ -62,7 +62,7 @@ def client(store, monkeypatch):
     app.dependency_overrides[router_mod.source_or_503] = FakeSource
     app.dependency_overrides[service.get_store] = lambda: store
 
-    def fake_simulate(topo, change):
+    def fake_simulate(topo, change, util_warn=0.8):
         if change.device != "DEMO-core-sw-01":
             raise UnknownTarget(f"unknown device {change.device}")
         return make_report("imp-20261125-abcdef", datetime.now(UTC), change)

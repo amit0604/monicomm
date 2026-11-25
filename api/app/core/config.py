@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     investigator_data_dir: str = "/data/investigator"
     investigator_window_s: int = 120
     investigator_poll_s: float = 5.0
+    link_util_warn: float = 0.8  # link load warning (Analyzer + Investigator); critical at 1.0
     analyzer_data_dir: str = "/data/analyzer"
     investigator_ref_bw_mbps: float = 100000.0  # estimated link cost = ref_bw / ifHighSpeed
-    investigator_util_warn: float = 0.8
 
 
 @lru_cache

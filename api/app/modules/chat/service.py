@@ -181,7 +181,9 @@ async def answer(source: DataSource, messages: list[Message]) -> ChatReply:
     )
     if not reply.strip():
         raise llm_client.LLMUnavailable("empty reply")
-    model = settings.gemini_model if settings.llm_provider == "gemini" else settings.llm_model
     return ChatReply(
-        source=source.source, reply=reply.strip()[:MAX_REPLY_CHARS], model=model, context=context
+        source=source.source,
+        reply=reply.strip()[:MAX_REPLY_CHARS],
+        model=llm_client.model_name(settings),
+        context=context,
     )

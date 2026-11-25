@@ -157,8 +157,9 @@ same data store and the same local LLM service.
   links down): paths between its neighbors, load unknown (no flow data). Cut-off devices are listed as isolated.
 - **Estimates, stated in every result:** cost = `MONICOMM_INVESTIGATOR_REF_BW_MBPS` / speed (configured OSPF costs are
   not polled); one path (ECMP ignored); LLDP graph = routed graph. Missing speed or load → "unknown", never "ok".
-- **Config:** `MONICOMM_INVESTIGATOR_REF_BW_MBPS` (100000), `MONICOMM_INVESTIGATOR_UTIL_WARN` (0.8; critical at 100 %).
-- **Shared engine later:** §2.3 change impact simulates the same kind of reroute for a planned change.
+- **Config:** `MONICOMM_INVESTIGATOR_REF_BW_MBPS` (100000), `MONICOMM_LINK_UTIL_WARN` (0.8; critical at 100 %), shared with §2.3 change impact.
+- **Shared engine:** §2.3 change impact simulates the same kind of reroute for a planned change. Both use
+  `api/app/core/graph.py` (graph, shortest path, components) and its one link-load rule (`util_status`).
 
 ### 2.5 Mapper: network topology and inventory
 - **Goal:** A live map of what is on the network and how it connects.
@@ -662,6 +663,7 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | Dev-only exception to C1: `MONICOMM_LLM_PROVIDER=gemini` (Google AI Studio) for local development without a GPU. Works only with `MONICOMM_ENV=dev` set explicitly (default is `prod`), key only in the local `.env`, the Docker api can't reach it (internal network); ChatIAF sends it demo data only; default stays `ollama` | PROPOSED (needs team approval) |
 | 2026-11-25 | Login with local users: `MONICOMM_AUTH_PROVIDER=local`, one JSON file (`MONICOMM_USERS_FILE`) with scrypt password hashes, server-side sessions, roles `admin`/`technician`/`viewer` (only the admin page checks roles so far). No internet, so it fits C1. Default is `none` (API open). Revisit with the database or LDAP/AD. API: `/api/v1/auth/{session,me}`, `/api/v1/admin/users` | PROPOSED |
 | 2026-11-25 | Dev-only Admin page (`web/src/features/admin/`, `GET/PUT/DELETE /api/v1/admin/llm`, `POST /api/v1/admin/llm/test`): an admin sets the model connection and the Gemini key. Closed unless login is on; the key is write-only. Saved in `.env.llm.json` (git-ignored, **not encrypted**, read only with `MONICOMM_ENV=dev` and login on), over the `.env` values. Every model call reads it through `api/app/ai/llm_settings.py`. Production needs encrypted storage first (section 10) | PROPOSED (needs team approval) |
+| 2026-11-25 | One graph engine for the Analyzer (planned change) and Investigator rerouting (failure): `api/app/core/graph.py` (adjacency, hops, shortest path, components) and one link-load rule `util_status` (warning at `MONICOMM_LINK_UTIL_WARN`, default 0.8; critical at 100 % or more). `MONICOMM_INVESTIGATOR_UTIL_WARN` is renamed `MONICOMM_LINK_UTIL_WARN`. The Analyzer demo topology reads device type, vendor and site from the Dashboard demo list | PROPOSED |
 | 2026-11-25 | Merged the two i18n systems into `web/src/i18n/`: English default, Hebrew via the top-bar toggle (replaces the Dashboard-only Hebrew-default `text.tsx`); module names stay in English | PROPOSED (confirm with the team) |
 
 ---

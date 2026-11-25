@@ -9,7 +9,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
 # Named volumes take this directory's owner, so the app user can write to them.
-RUN useradd --system --uid 10001 monicomm  && mkdir -p /data/pcap /data/investigator /data/auth && chown monicomm /data/pcap /data/investigator /data/auth
+RUN useradd --system --uid 10001 monicomm  && mkdir -p /data/pcap /data/investigator /data/analyzer /data/auth && chown monicomm /data/pcap /data/investigator /data/analyzer /data/auth
 USER monicomm
 ENV PATH="/srv/.venv/bin:$PATH"
 EXPOSE 8000
