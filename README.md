@@ -2,6 +2,7 @@
 
 AI-assisted network communication monitoring for air-gapped networks.
 Read **[PROJECT.md](PROJECT.md)** first: scope, architecture, UI rules and how we work.
+For diagrams of how the app is built, open **[docs/architecture.html](docs/architecture.html)** in a browser.
 
 ## Run it
 
