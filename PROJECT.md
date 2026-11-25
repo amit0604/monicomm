@@ -99,6 +99,21 @@ same data store and the same local LLM service.
 - **Rule:** this is **simulation only**. Monicomm never applies the change to a device (AI design rule 3).
 - **Limits:** results are only as good as the discovered topology and traffic data. Every report states
   what data it used and how current it is. Anything it couldn't see is marked "unknown", never "safe".
+- **Built v1** (plan: `plans/change-impact/plan.md`): `api/app/modules/analyzer/` (`simulate.py` pure engine, `parse.py`,
+  `store.py`, `router.py`, `demo.py`) and the Analyzer page `web/src/features/analyzer/`.
+  - Changes: `interface_down` and `device_down` only. ACL, VLAN, route cost, VM moves and config diffs come later.
+  - Free text: the local LLM only turns it into `{kind, device, interface}`. The result is checked against the topology,
+    and the device must be named in the request text, or it is a 422.
+  - Model: a lost path = no path to a `core` node. A removed link's load moves from its end farther from core along the
+    shortest path to the nearest core (no NetFlow yet). New SPOFs = nodes/links whose loss would newly cut someone off.
+  - Risk: **high** = a device or service loses core, or a link > 100 %. **medium** = only hosts lost, a link ≥ 80 %,
+    a new SPOF, or anything unknown. **low** = none of those.
+  - **API (`/api/v1/analyzer/impact`):** `GET /topology` · `POST /parse` `{text}` → `{change}` (422 unparsed, 503 model down) ·
+    `POST /reports` `{change}` → 201 report (422 unknown target) · `GET /reports` · `GET /reports/{id}`. 503 `no_data_source`
+    when no topology source is connected. Report JSON shape: plan file, "Contracts".
+  - **Config:** `MONICOMM_ANALYZER_DATA_DIR` (`/data/analyzer`, volume `analyzer-data`).
+  - **Interim:** the only topology is DEMO data (`MONICOMM_DEMO_DATA=true` + `MONICOMM_ENV=dev`), shown with a DEMO tag;
+    reports are JSON files until the DB lands. Next: a live topology from collector LLDP rows, then the Mapper.
 
 ### 2.4 Incident Investigator
 - **Goal:** Investigate a specific incident or network event end to end.

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     investigator_data_dir: str = "/data/investigator"
     investigator_window_s: int = 120
     investigator_poll_s: float = 5.0
+    analyzer_data_dir: str = "/data/analyzer"
 
 
 @lru_cache
