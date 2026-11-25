@@ -51,7 +51,7 @@ copy_files() {
     --exclude='.env' --exclude='*.env' --exclude='*.crt' --exclude='*.key' --exclude='devices.csv' \
     -cf - . | tar -C "$TARGET" -xf -
   chmod 700 "$TARGET/certs" "$TARGET"/snmp-server/secrets
-  find "$TARGET" -name '*.sh' -exec chmod 755 {} +
+  find "$TARGET" \( -name '*.sh' -o -name snmpq \) -exec chmod 755 {} +
 }
 
 ensure_env() {

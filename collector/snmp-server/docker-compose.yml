@@ -20,7 +20,7 @@ services:
     image: monicomm/trapd:0.1.0
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE]
-    secrets: [snmp_trap]
+    secrets: [snmp_trap, snmp_ro]   # snmp_ro only for ./snmpq (ad-hoc read-only queries)
     volumes:
       - ${TRAPD_STATE_DIR}:/var/lib/net-snmp     # keeps engine state across restarts
       - ${TRAP_OUT_DIR}:/var/log/trapd

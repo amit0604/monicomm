@@ -51,7 +51,7 @@ transforms:
         "schema": "monicomm.snmp_metric.v1",
         "kind": "snmp_metric",
         "collector_id": "${COLLECTOR_ID}",
-        "source_ip": .tags.agent_host,
+        "source_ip": .tags.source,
         "measurement": .name,
         "tags": .tags,
         "fields": .fields,

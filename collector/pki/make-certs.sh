@@ -24,6 +24,14 @@ DAYS_CA=3650
 DAYS_LEAF=825
 OUT="${OUT_DIR:-$(cd "$(dirname "$0")" && pwd)/out}"
 
+# Git Bash on Windows: openssl is a native Windows program. Give it C:/... paths and stop
+# Git Bash from rewriting "/O=Monicomm/CN=..." subjects into file paths.
+if command -v cygpath >/dev/null 2>&1; then
+  mkdir -p "$OUT"
+  OUT="$(cygpath -m "$OUT")"
+  export MSYS_NO_PATHCONV=1
+fi
+
 mkdir -p "$OUT"/{ca,ingest,syslog-server,snmp-server}
 umask 077
 
@@ -41,8 +49,7 @@ issue() {
   local dir="$1" name="$2" cn="$3" eku="$4" san="$5"
   openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out "$OUT/$dir/$name.key"
   openssl req -new -key "$OUT/$dir/$name.key" -subj "/O=Monicomm/CN=$cn" -out "$OUT/$dir/$name.csr"
-  local ext
-  ext="$(mktemp)"
+  local ext="$OUT/$dir/$name.ext"
   {
     echo "basicConstraints=critical,CA:FALSE"
     echo "keyUsage=critical,digitalSignature"

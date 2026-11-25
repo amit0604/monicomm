@@ -2,11 +2,13 @@
 
 Separate Docker deployments that run on their own VMs on the device management network, apart from
 the Monicomm stack. Design: `docs/plans/syslog-snmp-deployment.md`. Setup: `docs/runbooks/collector-servers-setup.md`.
+Sending to, querying and watching the servers: `docs/runbooks/talking-to-collectors.md`.
 
 ```
 collector/
 ├── syslog-server/     Vector: UDP/TCP 514 → raw archive + forward to Monicomm (mTLS)
 ├── snmp-server/       trapd (net-snmp) + poller (Telegraf, SNMPv3) + shipper (Vector) → Monicomm (mTLS)
+│   └── snmpq          ad-hoc read-only SNMP (get/walk/test-inform/poll-test) with the stored credentials
 ├── dev-ingest/        temporary stand-in for Monicomm `ingest` (TCP 6000, mTLS) that writes JSON files
 ├── pki/make-certs.sh  internal CA + mTLS certificates
 ├── certs/             this VM's certificates (git-ignored)
@@ -47,7 +49,7 @@ Vendor parsing (Cisco `%FAC-SEV-MNEMONIC`, Junos event tags) is Monicomm's job (
 |---|---|---|
 | `collector_id`, `source_ip` | | `source_ip` = polled device |
 | `measurement` | string | `snmp_system`, `snmp_interface`, `snmp_identity`, `snmp_lldp_neighbor`, `snmp_arp`, `snmp_entity`, `snmp_cisco_*`, `snmp_cdp_neighbor`, `snmp_juniper_operating`, `snmp_bgp_peer`, `snmp_ospf_neighbor` |
-| `tags` | object | `agent_host`, `sysName`, `index` (table row index), plus tag columns (`ifName`, `descr`...) |
+| `tags` | object | `source` (polled device IP), `sysName`, `index` (table row index), plus tag columns (`ifName`, `descr`...) |
 | `fields` | object | counter/gauge/string values named after the MIB object |
 | `polled_at` | integer | Unix ms |
 

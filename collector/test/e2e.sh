@@ -153,6 +153,8 @@ wait_for 120 "$WORK/ingest-data/$day/snmp_metric.jsonl" '"measurement":"snmp_int
 pass "SNMPv3 polling: interface metrics reached ingest"
 grep -q '"sysName":"e2e-device"' "$WORK/ingest-data/$day/snmp_metric.jsonl" || fail "sysName tag missing"
 pass "SNMPv3 polling: sysName tag present"
+grep -q '"source_ip":"'"$DEVICE_IP"'"' "$WORK/ingest-data/$day/snmp_metric.jsonl" || fail "metric source_ip is not the device IP"
+pass "SNMPv3 polling: source_ip is the device IP"
 
 echo "== buffering: stop ingest, send, start ingest"
 docker stop "$P-ingest" >/dev/null

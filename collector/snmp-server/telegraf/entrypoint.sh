@@ -39,7 +39,7 @@ cat > "$V3_BLOCK" <<'EOF'
   timeout = "5s"
   retries = 2
   max_repetitions = 20
-  agent_host_tag = "agent_host"
+  agent_host_tag = "source"
 EOF
 
 mkdir -p "$OUT"

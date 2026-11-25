@@ -1,6 +1,7 @@
 # Runbook: set up the syslog server and SNMP server (vSphere, Ubuntu 24.04, air-gapped)
 
 Design and reasons: `docs/plans/syslog-snmp-deployment.md`. This runbook is the hands-on part.
+Once the servers run, `talking-to-collectors.md` covers sending to, querying and watching them.
 
 Addresses used below. All three VMs are on one subnet, `192.168.108.0/24`:
 
@@ -226,17 +227,18 @@ Check polling against one device before onboarding the rest:
 
 ```bash
 sudo docker compose logs trapd --tail 5      # "trapd: engine ID 0x..., user moni-trap ..., listening on udp/162"
-sudo docker compose exec trapd snmpget -v3 -l authPriv -u moni-poll -a SHA -A '<auth>' -x AES -X '<priv>' \
-  10.0.0.1 .1.3.6.1.2.1.1.5.0
+sudo ./snmpq get <device-ip> .1.3.6.1.2.1.1.5.0   # sysName, using the credentials in secrets/ (no passwords typed)
+sudo ./snmpq poll-test                            # one run of every Telegraf poll, printed
 ```
 
 Check the trap path with a test inform from the VM itself:
 
 ```bash
-sudo docker compose exec trapd snmpinform -v3 -l authPriv -u moni-trap -a SHA -A '<auth>' -x AES -X '<priv>' \
-  -e <TRAPD_ENGINE_ID> 127.0.0.1:162 '' .1.3.6.1.6.3.1.1.5.3
+sudo ./snmpq test-inform             # "inform acknowledged by trapd"
 ls /srv/monicomm/trapd-out/          # traps-<date>.jsonl
 ```
+
+All the ways to send to, query and watch both servers: `talking-to-collectors.md`.
 
 ## 10. Onboard devices
 

@@ -9,3 +9,4 @@
 *.csv       text eol=lf
 *.example   text eol=lf
 Dockerfile  text eol=lf
+collector/snmp-server/snmpq text eol=lf
