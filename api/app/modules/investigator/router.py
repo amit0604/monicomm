@@ -93,6 +93,44 @@ def _cell(text: object) -> str:
     return str(text if text is not None else "-").replace("|", "\\|").replace("\n", " ")
 
 
+def _pct(util: object) -> str:
+    return f"{util * 100:.0f} %" if isinstance(util, int | float) else "unknown"
+
+
+def _path_md(label: str, path: dict | None, none_text: str) -> list[str]:
+    if not path:
+        return [f"**{label}:** {none_text}", ""]
+    head = f"**{label}:** status {path.get('status', 'unknown')}, cost {path.get('cost', '-')}, "
+    out = [head + f"max utilization {_pct(path.get('max_util'))}"]
+    if path.get("why"):
+        out.append(f"Why: {path['why']}")
+    out += [
+        f"{n}. {h.get('from')} {h.get('from_if') or '?'} -> {h.get('to')} {h.get('to_if') or '?'}"
+        f" ({_pct(h.get('util_after'))}, {h.get('status', 'unknown')})"
+        for n, h in enumerate(path.get("hops") or [], 1)
+    ]
+    return [*out, ""]
+
+
+def _reroute_md(rr: dict) -> list[str]:
+    out = ["## Rerouting", "", "Assumptions:", ""]
+    out += [f"- {a}" for a in rr.get("assumptions") or []] + [""]
+    for f in rr.get("flows") or []:
+        load = f.get("load_bps")
+        out += [
+            f"### {f.get('from')} -> {f.get('to')}",
+            "",
+            f"Reason: {f.get('reason', '-')}",
+            f"Load moved: {f'{load / 1e6:.1f} Mbps' if load is not None else 'unknown'}",
+            "",
+        ]
+        out += _path_md("Predicted path", f.get("predicted"), "none, the two ends are cut off")
+        out += _path_md("Recommended path", f.get("recommended"), "none, keep the predicted path")
+    out += [f"Isolated devices: {', '.join(rr.get('isolated') or []) or '-'}", ""]
+    out += ["_Recommendation only: apply changes through the normal change process._", ""]
+    return out
+
+
 def to_markdown(inc: dict) -> str:
     rc = inc.get("root_cause") or {}
     out = [
@@ -139,6 +177,8 @@ def to_markdown(inc: dict) -> str:
         )
         raw = str(e.get("raw") or "").replace("```", "` ` `")
         out += ["", "  ```", *(f"  {r}" for r in raw.splitlines()), "  ```", ""]
+    if inc.get("reroute"):
+        out += _reroute_md(inc["reroute"])
     out += ["## Notes", "", inc.get("notes") or "-", "", "## Resolution", ""]
     out += [inc.get("resolution") or "-", ""]
     ai = inc.get("analysis")

@@ -147,6 +147,19 @@ same data store and the same local LLM service.
   the UI polls every 15 s (later `/api/v1/ws`). The UI is the Incident Investigator page plus a `sonner` toast on
   every page for each new critical incident.
 
+#### Failure rerouting (built; plan: `plans/incident-analyzer/reroute-plan.md`)
+- **What:** for an incident with a link or device down, `incident.reroute` shows the **predicted** path the traffic
+  moves to (lowest estimated cost) with each link's utilization after the move, and, when that path runs a link at
+  ≥ 80 %, a **recommended** path that keeps the busiest link lowest, with the reason. **Recommendation only**: nothing
+  is applied to a device. Computed on every incident update, deterministic, no LLM (`reroute.py`).
+- **Data:** LLDP graph; `ifHighSpeed` and the rate from two `ifHCIn/OutOctets` samples (`snmp_interface`). Moved
+  load = the failed link's last measured rate. Device failure (coldStart, or every LLDP link of a device with ≥ 2
+  links down): paths between its neighbors, load unknown (no flow data). Cut-off devices are listed as isolated.
+- **Estimates, stated in every result:** cost = `MONICOMM_INVESTIGATOR_REF_BW_MBPS` / speed (configured OSPF costs are
+  not polled); one path (ECMP ignored); LLDP graph = routed graph. Missing speed or load → "unknown", never "ok".
+- **Config:** `MONICOMM_INVESTIGATOR_REF_BW_MBPS` (100000), `MONICOMM_INVESTIGATOR_UTIL_WARN` (0.8; critical at 100 %).
+- **Shared engine later:** §2.3 change impact simulates the same kind of reroute for a planned change.
+
 ### 2.5 Mapper: network topology and inventory
 - **Goal:** A live map of what is on the network and how it connects.
 - **Discovers:** network devices (switches, routers, firewalls), end devices, hosts,
@@ -634,6 +647,7 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | UI: pastel design system, Segoe UI font, Grafana + monday.com style, light and dark themes (section 6A) | DECIDED |
 | 2026-11-25 | Analyzer includes change impact analysis ("what if"): simulation only, never applied to devices (section 2.3) | DECIDED |
 | 2026-11-25 | Live incident analyzer reacts only to abnormal events; normal operation stores and shows nothing (section 2.4) | DECIDED |
+| 2026-11-25 | Failure rerouting: predicted + recommended path from LLDP + interface counters, costs estimated from speed, recommendation only (section 2.4) | DECIDED |
 | 2026-11-25 | Shared test + CI pipeline: ruff/pytest, prettier/eslint/stylelint/vitest, air-gap check, Docker smoke test (section 7) | DECIDED |
 | 2026-11-25 | `web` (nginx) serves the UI and proxies `/api`, so it also plays the `proxy` role for now. Backend containers sit on an `internal` Docker network with no way out | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |

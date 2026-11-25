@@ -125,8 +125,81 @@ def test_export_markdown(client):
         "  %LINK-3-UPDOWN: Interface Gi1/0/24, changed state to down",
     ):
         assert part in md
-    assert "## AI analysis" not in md
+    assert "## AI analysis" not in md and "## Rerouting" not in md
     assert client.get(f"{BASE}/ffffffffffff/export.md").status_code == 404
+
+
+def hop(a, a_if, b, b_if, util, status):
+    return {
+        "from": a,
+        "from_if": a_if,
+        "to": b,
+        "to_if": b_if,
+        "speed_mbps": 1000.0,
+        "load_bps": None,
+        "util_after": util,
+        "status": status,
+    }
+
+
+def test_export_markdown_rerouting():
+    from app.modules.investigator.router import to_markdown
+
+    reroute = {
+        "computed_at": "2026-11-25T10:00:05Z",
+        "assumptions": ["Link costs estimated from interface speed (reference 100000 Mbps)"],
+        "flows": [
+            {
+                "from": "10.0.0.1",
+                "to": "10.0.0.2",
+                "load_bps": 420000000.0,
+                "reason": "Link 10.0.0.1 Gi1/0/24 <-> 10.0.0.2 ge-0/0/1 down",
+                "before": {"hops": []},
+                "predicted": {
+                    "hops": [hop("10.0.0.1", "Gi1/0/1", "10.0.0.4", "Gi0/1", 0.93, "warning")],
+                    "cost": 3,
+                    "max_util": 0.93,
+                    "status": "warning",
+                },
+                "recommended": {
+                    "hops": [hop("10.0.0.1", "Gi1/0/2", "10.0.0.5", None, None, "unknown")],
+                    "cost": 4,
+                    "max_util": 0.61,
+                    "status": "ok",
+                    "why": "keeps every link under 80 %",
+                },
+            },
+            {
+                "from": "10.0.0.3",
+                "to": "10.0.0.2",
+                "load_bps": None,
+                "reason": "Device down",
+                "before": {"hops": []},
+                "predicted": None,
+                "recommended": None,
+            },
+        ],
+        "isolated": ["10.0.0.9"],
+    }
+    md = to_markdown({**INCIDENT, "reroute": reroute})
+    for part in (
+        "## Rerouting",
+        "- Link costs estimated from interface speed (reference 100000 Mbps)",
+        "### 10.0.0.1 -> 10.0.0.2",
+        "Reason: Link 10.0.0.1 Gi1/0/24 <-> 10.0.0.2 ge-0/0/1 down",
+        "Load moved: 420.0 Mbps",
+        "**Predicted path:** status warning, cost 3, max utilization 93 %",
+        "1. 10.0.0.1 Gi1/0/1 -> 10.0.0.4 Gi0/1 (93 %, warning)",
+        "**Recommended path:** status ok, cost 4, max utilization 61 %",
+        "Why: keeps every link under 80 %",
+        "1. 10.0.0.1 Gi1/0/2 -> 10.0.0.5 ? (unknown, unknown)",
+        "Load moved: unknown",
+        "**Predicted path:** none, the two ends are cut off",
+        "Isolated devices: 10.0.0.9",
+        "Recommendation only",
+    ):
+        assert part in md
+    assert md.index("## Rerouting") < md.index("## Notes")
 
 
 def test_analysis_ok_and_stored(client, monkeypatch):
@@ -179,7 +252,7 @@ def test_lifespan_starts_and_stops_listener(tmp_path, monkeypatch):
     fake = types.ModuleType("app.modules.investigator.correlate")
 
     class Correlator:
-        def __init__(self, window_s=120, topology=None):
+        def __init__(self, window_s=120, topology=None, *, ref_bw_mbps, util_warn):
             self.window_s = window_s
             self.loaded = []
 

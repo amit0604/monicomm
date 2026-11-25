@@ -36,7 +36,11 @@ async def lifespan(_app: FastAPI):
         listener = Listener(
             settings.investigator_ingest_dir,
             settings.investigator_data_dir,
-            Correlator(window_s=settings.investigator_window_s),
+            Correlator(
+                window_s=settings.investigator_window_s,
+                ref_bw_mbps=settings.investigator_ref_bw_mbps,
+                util_warn=settings.investigator_util_warn,
+            ),
             IncidentStore(settings.investigator_data_dir),
             settings.investigator_poll_s,
         )

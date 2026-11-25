@@ -54,7 +54,47 @@ export interface Analysis {
   created_at: string;
 }
 
+// Rerouting (plans/incident-analyzer/reroute-plan.md, "reroute.py" contract).
+export type HopStatus = "ok" | "warning" | "critical" | "unknown";
+
+export interface Hop {
+  from: string;
+  from_if: string | null;
+  to: string;
+  to_if: string | null;
+  speed_mbps: number | null;
+  load_bps: number | null;
+  util_after: number | null;
+  status: HopStatus;
+}
+
+export interface RoutePath {
+  hops: Hop[];
+  cost: number;
+  max_util: number | null;
+  status: HopStatus;
+}
+
+export interface RerouteFlow {
+  from: string;
+  to: string;
+  load_bps: number | null;
+  reason: string;
+  failed?: { device: string; interface: string | null } | null;
+  before: { hops: Hop[] };
+  predicted: RoutePath | null;
+  recommended: (RoutePath & { why: string }) | null;
+}
+
+export interface Reroute {
+  computed_at: string;
+  assumptions: string[];
+  flows: RerouteFlow[];
+  isolated: string[];
+}
+
 export interface Incident extends IncidentSummary {
+  reroute?: Reroute | null;
   possible_causes: { summary: string; event_ids: string[] }[];
   impact: ImpactItem[];
   timeline: TimelineEvent[];

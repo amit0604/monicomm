@@ -279,3 +279,145 @@ def test_load_keeps_only_newest_max_open(monkeypatch):
         ]
     )
     assert sorted(c._open) == [f"{2:012x}", f"{3:012x}"]
+
+
+@pytest.fixture
+def fake_compute(monkeypatch):
+    calls = []
+
+    def compute(
+        topology,
+        failed_links,
+        failed_devices,
+        ref_bw_mbps,
+        util_warn,
+        now,
+        *,
+        edges=None,
+        moved_loads=None,
+    ):
+        calls.append(
+            (failed_links, failed_devices, ref_bw_mbps, util_warn, now, edges, moved_loads)
+        )
+        return {"flows": [], "fake": len(calls)}
+
+    monkeypatch.setattr(correlate.reroute, "compute", compute)
+    return calls
+
+
+def test_link_down_incident_carries_reroute(fake_compute):
+    c = Correlator(topology=core_topology(), ref_bw_mbps=1000.0, util_warn=0.5)
+    (inc,) = run(
+        c, [ev(0, A, "link", "down", "GigabitEthernet1/0/24"), ev(1, B, "link", "down", "ge-0/0/1")]
+    ).values()
+    assert inc["reroute"] == {"flows": [], "fake": 2}
+    # A's only LLDP link is down: A is cut off (reroute reports it isolated), not a failed device
+    links, devices, ref_bw, warn, now, edges, moved = fake_compute[-1]
+    assert links == [(A, "GigabitEthernet1/0/24"), (B, "ge-0/0/1")]
+    assert devices == [] and (ref_bw, warn) == (1000.0, 0.5)
+    assert now == T0 + timedelta(seconds=1)
+    assert edges == core_topology().edges() and moved == {}
+
+
+def test_recovered_link_is_not_failed(fake_compute):
+    c = Correlator(topology=core_topology())
+    c.feed(ev(0, A, "link", "down", "GigabitEthernet1/0/24"))
+    c.feed(ev(1, B, "link", "down", "ge-0/0/2"))
+    (inc,) = c.feed(ev(5, B, "link", "up", "ge-0/0/2"))
+    assert fake_compute[-1][:2] == ([(A, "GigabitEthernet1/0/24")], [])
+    calls = len(fake_compute)
+    (inc,) = c.feed(ev(6, A, "link", "up", "Gi1/0/24"))
+    assert inc["reroute"] is None and len(fake_compute) == calls  # nothing failed: not called
+
+
+def test_cold_start_is_not_a_failed_device(fake_compute):
+    # coldStart is sent when the device is back up: no reroute unless links are down
+    c = Correlator(topology=core_topology())
+    (inc,) = c.feed(ev(0, D, "hw_env", code=".1.3.6.1.6.3.1.1.5.1", sev="warning"))
+    assert inc["reroute"] is None and fake_compute == []
+    assert Correlator().feed(ev(0, D, "hw_env", sev="crit"))[0]["reroute"] is None
+
+
+class StarTopology:
+    """R in the middle of N1..N3, which also link to each other in a chain."""
+
+    EDGES = [
+        ("R", "e1", "N1", "e0"),
+        ("R", "e2", "N2", "e0"),
+        ("R", "e3", "N3", "e0"),
+        ("N1", "e1", "N2", "e1"),
+        ("N2", "e2", "N3", "e1"),
+    ]
+
+    def edges(self):
+        return [{"a": a, "a_if": ai, "b": b, "b_if": bi} for a, ai, b, bi in self.EDGES]
+
+    def neighbors(self, device):
+        return {b for a, _, b, _ in self.EDGES if a == device} | {
+            a for a, _, b, _ in self.EDGES if b == device
+        }
+
+    def link(self, device, interface):
+        return None
+
+
+def test_silent_device_with_all_links_down_from_far_ends_is_failed(fake_compute):
+    c = Correlator(topology=StarTopology())
+    downs = [ev(i, n, "link", "down", "e0") for i, n in enumerate(["N1", "N2", "N3"])]
+    (inc,) = run(c, downs).values()
+    assert "R" not in inc["devices"]  # R logged nothing
+    assert fake_compute[-1][1] == ["R"]
+    # two of three links down is not a failed device; N1..N3 keep a live link each
+    assert fake_compute[-2][1] == []
+
+
+def test_reroute_recomputed_only_when_failed_set_changes(fake_compute, monkeypatch):
+    topo = core_topology()
+    edge_calls = []
+    real_edges = topo.edges
+    monkeypatch.setattr(topo, "edges", lambda: edge_calls.append(1) or real_edges())
+    c = Correlator(topology=topo)
+    (inc,) = c.feed(ev(0, A, "link", "down", "GigabitEthernet1/0/24"))
+    assert len(fake_compute) == 1 and len(edge_calls) == 1  # edges() once per refresh
+    assert fake_compute[0][5] == real_edges()
+    (inc,) = c.feed(ev(5, A, "ospf", "down", peer=B))  # same failed set
+    assert len(fake_compute) == 1 and inc["reroute"] == {"flows": [], "fake": 1}
+    (inc,) = c.feed(ev(6, B, "link", "down", "ge-0/0/1"))  # new failed link
+    assert len(fake_compute) == 2 and inc["reroute"]["fake"] == 2
+
+    resumed = Correlator(topology=topo)  # restored incident: memo empty, computes once
+    resumed.load([inc])
+    (joined,) = resumed.feed(ev(10, B, "bgp", "down", peer=C))
+    assert joined["id"] == inc["id"] and joined["reroute"]["fake"] == 3
+
+
+def test_moved_load_is_remembered_per_failed_link(monkeypatch):
+    calls, loads = [], iter([5e6, 0.0, 0.0])
+
+    def compute(topology, links, devices, ref_bw, warn, now, *, edges=None, moved_loads=None):
+        calls.append(moved_loads)
+        failed = {"device": A, "interface": "GigabitEthernet1/0/24"}
+        return {"flows": [{"failed": failed, "load_bps": next(loads)}]}
+
+    monkeypatch.setattr(correlate.reroute, "compute", compute)
+    c = Correlator(topology=core_topology())
+    c.feed(ev(0, A, "link", "down", "GigabitEthernet1/0/24"))
+    c.feed(ev(1, B, "link", "down", "ge-0/0/1"))  # this poll sees the dead link at 0
+    c.feed(ev(2, B, "link", "down", "ge-0/0/2"))
+    remembered = {(A, "GigabitEthernet1/0/24"): 5e6}
+    assert calls == [{}, remembered, remembered]
+
+
+def test_reroute_error_keeps_incident(monkeypatch):
+    def boom(*args, **kwargs):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(correlate.reroute, "compute", boom)
+    (inc,) = Correlator(topology=core_topology()).feed(ev(0, A, "link", "down", "Gi1/0/24"))
+    assert inc["reroute"] is None and inc["root_cause"]
+
+
+def test_normal_only_stream_never_calls_reroute(fake_compute):
+    c = Correlator(topology=core_topology())
+    assert c.feed(ev(0, A, "link", "down", "Gi1/0/24", abnormal=False)) == []
+    assert c.feed(ev(1, A, "link", "up", "Gi1/0/24")) == [] and fake_compute == []
