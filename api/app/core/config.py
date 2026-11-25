@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     redis_url: str = "redis://queue:6379/0"
     llm_base_url: str = "http://llm:11434"
     llm_model: str = "qwen2.5:7b"
+    # "ollama" = local, the only option on the closed network; "gemini" = dev-only (env=dev)
+    llm_provider: str = "ollama"
+    gemini_api_key: str = ""  # local .env only, never in git
+    gemini_model: str = "gemini-2.5-flash"
+    investigator_ingest_dir: str = ""  # empty = listener off
+    investigator_data_dir: str = "/data/investigator"
+    investigator_window_s: int = 120
+    investigator_poll_s: float = 5.0
 
 
 @lru_cache

@@ -88,6 +88,27 @@ same data store and the same local LLM service.
   notes and closes it with a resolution.
 - **Must have:** every AI conclusion links to its evidence; investigations are saved and searchable; export to PDF/Markdown.
 
+#### Live incident analyzer (built; plan: `plans/incident-analyzer/plan.md`)
+- **What:** listens to collector events (`collector/README.md`: `monicomm.syslog.v1`, `monicomm.trap.v1`,
+  `monicomm.snmp_metric.v1`), opens incidents **only for abnormal events**, shows what they affect on the
+  network path and a probable root cause with evidence. **A normal network produces nothing:** no incident, no file, no log.
+- **Abnormal:** link/adjacency (BGP/OSPF/IS-IS)/VPN down (not admin-down or admin BGP resets), cluster failover,
+  hardware/env alarms, STP root/topology changes, interface flapping (≥ 3 downs in the window), failed-login bursts
+  (≥ 5 per device in 5 min). Up events only mark an open incident as recovered. Normal events stay in memory for the
+  window as possible causes (e.g. a config change just before a link drop), then are dropped.
+- **How:** `api/app/modules/investigator/`: `events.py` (vendor normalization, Cisco + Junos, injection-safe),
+  `topology.py` (LLDP neighbors from `snmp_lldp_neighbor`), `correlate.py` (group by time window + same device or
+  LLDP neighbor; rule-based root cause; impact), `listener.py` (tails `<ingest_dir>/<date>/*.jsonl` by offset),
+  `store.py`, `router.py`, `analysis.py` (the LLM only explains and cites event ids; it never finds the cause itself).
+- **API (`/api/v1/investigator`):** `GET /incidents?status=` · `GET /incidents/{id}` · `PATCH /incidents/{id}`
+  (`notes`, `resolution`, `status` open/closed) · `POST /incidents/{id}/analysis` (503 when the model is down) ·
+  `GET /incidents/{id}/export.md`. Incident JSON shape: plan file, "Contracts".
+- **Config:** `MONICOMM_INVESTIGATOR_INGEST_DIR` (empty = listener off), `_DATA_DIR`, `_WINDOW_S` (120), `_POLL_S` (5).
+- **Interim, until the foundation lands:** reads dev-ingest JSONL files (later Redis streams, same format); incidents
+  are JSON files under the data dir (later Postgres); the listener runs in the API lifespan (later the worker);
+  the UI polls every 15 s (later `/api/v1/ws`). The UI is the Incident Investigator page plus a `sonner` toast on
+  every page for each new critical incident.
+
 ### 2.5 Mapper: network topology and inventory
 - **Goal:** A live map of what is on the network and how it connects.
 - **Discovers:** network devices (switches, routers, firewalls), end devices, hosts,
@@ -529,6 +550,8 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | Six modules: Chat AI, Dashboard, Analyzer, Incident Investigator, Mapper, Chatchup (PCAP) | DECIDED |
 | 2026-11-25 | UI: pastel design system, Segoe UI font, Grafana + monday.com style, light and dark themes (section 6A) | DECIDED |
 | 2026-11-25 | Analyzer includes change impact analysis ("what if"): simulation only, never applied to devices (section 2.3) | DECIDED |
+| 2026-11-25 | Live incident analyzer reacts only to abnormal events; normal operation stores and shows nothing (section 2.4) | DECIDED |
+| 2026-11-25 | Dev-only exception to C1: `MONICOMM_LLM_PROVIDER=gemini` (Google AI Studio) for local development without a GPU. Works only with `MONICOMM_ENV=dev`, key only in the local `.env`, the Docker api can't reach it (internal network); default stays `ollama` | PROPOSED (needs team approval) |
 | 2026-11-25 | Shared test + CI pipeline: ruff/pytest, prettier/eslint/stylelint/vitest, air-gap check, Docker smoke test (section 7) | DECIDED |
 | 2026-11-25 | `web` (nginx) serves the UI and proxies `/api`, so it also plays the `proxy` role for now. Backend containers sit on an `internal` Docker network with no way out | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |

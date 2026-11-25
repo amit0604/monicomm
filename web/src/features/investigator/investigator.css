@@ -1,0 +1,217 @@
+/* Investigator page layout. Tokens only (see styles/tokens.css). */
+
+.investigator {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.investigator--split {
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+}
+
+.board-group {
+  margin-bottom: var(--space-4);
+  border-left: 4px solid var(--neutral-strong);
+  border-radius: var(--radius-sm);
+}
+
+.board-group--accent {
+  border-left-color: var(--accent-strong);
+}
+
+.board-group--ok {
+  border-left-color: var(--ok-strong);
+}
+
+.board-group__title {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.board-group__count {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+}
+
+.board-group__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--border);
+  transition: background var(--motion-fast);
+}
+
+.board-row:hover,
+.board-row[aria-current="true"] {
+  background: var(--surface-2);
+}
+
+.board-row__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-row__devices,
+.board-row__time {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.board-row__time,
+.timeline__time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* With the detail panel open the list is narrow: title on its own line, details under it */
+.investigator--split .board-row {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  row-gap: var(--space-1);
+}
+
+.investigator--split .board-row__title {
+  grid-column: 1 / -1;
+  order: -1;
+}
+
+.investigator--split .board-row__devices {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail__header,
+.detail__row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.detail__section {
+  margin-top: var(--space-5);
+}
+
+.detail__section h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.detail__section h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.detail__error {
+  color: var(--critical-strong);
+}
+
+.detail__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.detail__section .field + .field {
+  margin-top: var(--space-2);
+}
+
+.impact {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.impact__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+
+.analysis {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+
+.analysis__sources a {
+  color: var(--primary);
+}
+
+.timeline {
+  width: 100%;
+  font-size: var(--text-sm);
+  border-collapse: collapse;
+}
+
+.timeline th {
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.timeline th,
+.timeline td {
+  padding: var(--space-1) var(--space-2);
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline td:not(.timeline__raw) {
+  white-space: nowrap;
+}
+
+.timeline__raw {
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.timeline__row--source {
+  background: var(--primary-soft);
+}
+
+.timeline__row--source:target {
+  outline: 2px solid var(--primary);
+}

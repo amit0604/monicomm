@@ -8,7 +8,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
-RUN useradd --system --uid 10001 monicomm
+RUN useradd --system --uid 10001 monicomm \
+ && mkdir -p /data/investigator && chown monicomm /data/investigator
 USER monicomm
 ENV PATH="/srv/.venv/bin:$PATH"
 EXPOSE 8000

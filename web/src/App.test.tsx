@@ -1,7 +1,23 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import App from "./App";
 
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response("[]", { status: 200 })),
+  );
+});
+afterEach(() => vi.unstubAllGlobals());
+
 describe("App shell", () => {
+  it("renders the Investigator page instead of Coming soon", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Incident Investigator" }));
+    expect(
+      await screen.findByText("No abnormal events. The network looks normal."),
+    ).toBeInTheDocument();
+  });
+
   it("shows the six modules in the fixed nav order", () => {
     render(<App />);
     const nav = screen.getByRole("navigation", { name: "Modules" });
