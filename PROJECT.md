@@ -106,7 +106,7 @@ same data store and the same local LLM service.
     and the device must be named in the request text, or it is a 422.
   - Model: a lost path = no path to a `core` node. A removed link's load moves from its end farther from core along the
     shortest path to the nearest core (no NetFlow yet). New SPOFs = nodes/links whose loss would newly cut someone off.
-  - Risk: **high** = a device or service loses core, or a link > 100 %. **medium** = only hosts lost, a link ≥ 80 %,
+  - Risk: **high** = a device or service loses core, or a link at 100 % or more. **medium** = only hosts lost, a link ≥ 80 %,
     a new SPOF, or anything unknown. **low** = none of those.
   - **API (`/api/v1/analyzer/impact`):** `GET /topology` · `POST /parse` `{text}` → `{change}` (422 unparsed, 503 model down) ·
     `POST /reports` `{change}` → 201 report (422 unknown target) · `GET /reports` · `GET /reports/{id}`. 503 `no_data_source`
@@ -681,6 +681,7 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | Login with local users: `MONICOMM_AUTH_PROVIDER=local`, one JSON file (`MONICOMM_USERS_FILE`) with scrypt password hashes, server-side sessions, roles `admin`/`technician`/`viewer` (only the admin page checks roles so far). No internet, so it fits C1. Default is `none` (API open). Revisit with the database or LDAP/AD. API: `/api/v1/auth/{session,me}`, `/api/v1/admin/users` | PROPOSED |
 | 2026-11-25 | Dev-only Admin page (`web/src/features/admin/`, `GET/PUT/DELETE /api/v1/admin/llm`, `POST /api/v1/admin/llm/test`): an admin sets the model connection and the Gemini key. Closed unless login is on; the key is write-only. Saved in `.env.llm.json` (git-ignored, **not encrypted**, read only with `MONICOMM_ENV=dev` and login on), over the `.env` values. Every model call reads it through `api/app/ai/llm_settings.py`. Production needs encrypted storage first (section 10) | PROPOSED (needs team approval) |
 | 2026-11-25 | One graph engine for the Analyzer (planned change) and Investigator rerouting (failure): `api/app/core/graph.py` (adjacency, hops, shortest path, components) and one link-load rule `util_status` (warning at `MONICOMM_LINK_UTIL_WARN`, default 0.8; critical at 100 % or more). `MONICOMM_INVESTIGATOR_UTIL_WARN` is renamed `MONICOMM_LINK_UTIL_WARN`. The Analyzer demo topology reads device type, vendor and site from the Dashboard demo list | PROPOSED |
+| 2026-11-25 | One web polling hook, `web/src/lib/usePolled.ts`, for the Dashboard and the Mapper; the Mapper takes device status and type types from the Dashboard. **Open:** the Mapper demo link list (`mapper/demo.py`) and the Analyzer demo topology (`analyzer/demo.py`) are two different demo networks for the same DEMO devices; pick one with the Mapper and Analyzer owners | PROPOSED |
 | 2026-11-25 | Mapper: nodes are the Dashboard inventory, links come from a separate `LinkSource`; link status is derived from both ports (port load uses the shared `util_status` rule); links are colored by physical medium, status is shown by line style + text (§2.5) | PROPOSED |
 | 2026-11-25 | Merged the two i18n systems into `web/src/i18n/`: English default, Hebrew via the top-bar toggle (replaces the Dashboard-only Hebrew-default `text.tsx`); module names stay in English | PROPOSED (confirm with the team) |
 

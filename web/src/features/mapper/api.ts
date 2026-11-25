@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-import { ApiError, request } from "../../lib/api";
+import { usePolled, type Polled } from "../../lib/usePolled";
+import type { DeviceStatus, DeviceType } from "../dashboard/api";
 
-// Mirrors api/app/modules/mapper/models.py.
-export type DeviceStatus = "online" | "warning" | "critical" | "suspected_offline" | "offline";
-export type DeviceType = "router" | "switch" | "firewall" | "server" | "access_point" | "unknown";
+// Mirrors api/app/modules/mapper/models.py. Device status and type are the Dashboard's.
+export type { DeviceStatus, DeviceType };
 export type Medium = "fiber" | "copper" | "wireless" | "wan";
 export type LinkStatus = "up" | "degraded" | "down" | "unknown";
 export type LinkReason =
@@ -50,48 +49,14 @@ export interface Topology {
 }
 
 const URL = "/api/v1/mapper/topology";
-const REFRESH_MS = 30_000;
 
-export interface LoadedTopology {
-  data: Topology | null;
-  /** HTTP status, or 0 when the server could not be reached. */
-  error: number | null;
-  reload: () => void;
-}
+export type LoadedTopology = Polled<Topology>;
+
+// Anything that isn't a topology (a proxy's error page, an old server) is a failure.
+const isTopology = (body: unknown) => {
+  const b = body as Partial<Topology> | null;
+  return Array.isArray(b?.nodes) && Array.isArray(b?.links);
+};
 
 /** Loads the topology, refreshes it every 30 seconds and keeps the last good map if a refresh fails. */
-export function useTopology(): LoadedTopology {
-  const [data, setData] = useState<Topology | null>(null);
-  const [error, setError] = useState<number | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const reload = useCallback(() => setAttempt((n) => n + 1), []);
-
-  useEffect(() => {
-    const abort = new AbortController();
-    const load = async () => {
-      let status = 0;
-      try {
-        const body = await request<Partial<Topology> | null>(URL, { signal: abort.signal });
-        if (abort.signal.aborted) return;
-        // Anything that isn't a topology (a proxy's error page, an old server) is a failure.
-        if (Array.isArray(body?.nodes) && Array.isArray(body?.links)) {
-          setData(body as Topology);
-          setError(null);
-          return;
-        }
-      } catch (e) {
-        // An HTTP error keeps its status; unreachable, unreadable or aborted stays 0.
-        if (e instanceof ApiError) status = e.status;
-      }
-      if (!abort.signal.aborted) setError(status);
-    };
-    void load();
-    const timer = setInterval(() => void load(), REFRESH_MS);
-    return () => {
-      abort.abort();
-      clearInterval(timer);
-    };
-  }, [attempt]);
-
-  return { data, error, reload };
-}
+export const useTopology = (): LoadedTopology => usePolled<Topology>(URL, isTopology);

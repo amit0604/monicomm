@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { usePolled, type Polled } from "../../lib/usePolled";
 
 // Mirrors api/app/modules/dashboard/models.py.
 export type DeviceStatus = "online" | "warning" | "critical" | "suspected_offline" | "offline";
@@ -82,58 +82,10 @@ export interface EventList {
   items: NetworkEvent[];
 }
 
-const REFRESH_MS = 30_000;
+export type Loaded<T> = Polled<T>;
 
-interface State<T> {
-  data: T | null;
-  /** HTTP status, or 0 when the server could not be reached. */
-  error: number | null;
-  updatedAt: string | null;
-}
-export interface Loaded<T> extends State<T> {
-  reload: () => void;
-}
-
-/** Loads an API path, refreshes it every 30 seconds and keeps the last good data if a refresh fails. */
-export function useApi<T>(path: string): Loaded<T> {
-  const [state, setState] = useState<State<T>>({ data: null, error: null, updatedAt: null });
-  const [attempt, setAttempt] = useState(0);
-  const reload = useCallback(() => setAttempt((n) => n + 1), []);
-  const loadedPath = useRef<string | null>(null);
-
-  useEffect(() => {
-    const abort = new AbortController();
-    const load = async () => {
-      let error = 0;
-      try {
-        const res = await fetch(`/api/v1/dashboard${path}`, { signal: abort.signal });
-        if (res.ok) {
-          const data = (await res.json()) as T;
-          if (abort.signal.aborted) return;
-          loadedPath.current = path;
-          setState({ data, error: null, updatedAt: new Date().toISOString() });
-          return;
-        }
-        error = res.status;
-      } catch {
-        // Unreachable, or aborted because the view moved on.
-      }
-      if (abort.signal.aborted) return;
-      // Data of another filter or device must not stay on screen as if it answered this request.
-      setState((s) =>
-        loadedPath.current === path ? { ...s, error } : { data: null, error, updatedAt: null },
-      );
-    };
-    void load();
-    const timer = setInterval(() => void load(), REFRESH_MS);
-    return () => {
-      abort.abort();
-      clearInterval(timer);
-    };
-  }, [path, attempt]);
-
-  return { ...state, reload };
-}
+/** Loads a Dashboard API path and keeps it fresh (see lib/usePolled). */
+export const useApi = <T>(path: string): Loaded<T> => usePolled<T>(`/api/v1/dashboard${path}`);
 
 export function query(params: Record<string, string>): string {
   const search = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
