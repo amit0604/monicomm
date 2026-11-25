@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from app.core.config import get_settings
+from app.modules.pcap.router import router as pcap_router
 
 MODULES = [
     {"id": "dashboard", "name": "Dashboard"},
@@ -19,6 +20,9 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
+
+
+app.include_router(pcap_router, prefix="/api/v1/pcap")
 
 
 @app.get("/api/v1/health")

@@ -7,6 +7,8 @@ closed network: a public LLM endpoint is refused before any request is made.
 import ipaddress
 from urllib.parse import urlparse
 
+import httpx
+
 from app.core.config import get_settings
 
 
@@ -38,3 +40,26 @@ def validate_llm_url(url: str) -> str:
 
 def llm_base_url() -> str:
     return validate_llm_url(get_settings().llm_base_url)
+
+
+class LLMError(RuntimeError):
+    """The model server failed or returned something unusable."""
+
+
+async def chat(messages: list[dict], *, transport: httpx.AsyncBaseTransport | None = None) -> str:
+    """One chat completion from the local model (Ollama /api/chat, non-streaming).
+
+    `messages` are {"role": "system" | "user" | "assistant", "content": str}.
+    `transport` is for tests only. Raises LLMError on any failure.
+    """
+    settings = get_settings()
+    body = {"model": settings.llm_model, "messages": messages, "stream": False}
+    try:
+        async with httpx.AsyncClient(
+            base_url=llm_base_url(), timeout=settings.llm_timeout_s, transport=transport
+        ) as client:
+            res = await client.post("/api/chat", json=body)
+            res.raise_for_status()
+            return res.json()["message"]["content"]
+    except (httpx.HTTPError, KeyError, TypeError, ValueError) as e:
+        raise LLMError(f"LLM request failed: {type(e).__name__}") from e

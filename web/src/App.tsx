@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { MODULES, type ModuleId } from "./modules";
 import { StatusPill } from "./components/ui/StatusPill";
+import { ChatchupTab } from "./features/pcap/ChatchupTab";
 
 type Theme = "light" | "dark";
 
@@ -50,9 +51,13 @@ export default function App() {
           </button>
         </header>
         <main className="content">
-          <section className="panel">
-            <StatusPill status="info" label="Coming soon" />
-          </section>
+          {active === "pcap" ? (
+            <ChatchupTab theme={theme} />
+          ) : (
+            <section className="panel">
+              <StatusPill status="info" label="Coming soon" />
+            </section>
+          )}
         </main>
       </div>
     </div>
