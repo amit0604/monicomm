@@ -89,3 +89,71 @@ def test_bad_rows_are_ignored():
     topo.update(lldp("10.0.0.5", "sw5", 7, "x") | {"tags": {"source": "10.0.0.5", "index": "7"}})
     topo.update(metric("10.0.0.5", "sw5", "snmp_lldp_neighbor", {"index": "0.7.1"}, {}))
     assert topo.neighbors("10.0.0.5") == set()
+
+
+def counters(device, sysname, index, name, polled_at, octets_in, octets_out, speed=1000):
+    row = iface(device, sysname, index, name)
+    row["fields"] = {"ifHCInOctets": octets_in, "ifHCOutOctets": octets_out}
+    if speed is not None:
+        row["fields"]["ifHighSpeed"] = speed
+    row["polled_at"] = polled_at
+    return row
+
+
+def test_rate_from_last_two_samples_max_of_in_out():
+    topo = Topology()
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 0, 0, 0))
+    assert topo.rate("10.0.0.1", "24") is None  # one sample: no rate yet
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 60_000, 750_000_000, 1_000))
+    assert topo.rate("10.0.0.1", "24") == 100_000_000.0  # 750 MB in 60 s = 100 Mbit/s
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 120_000, 750_000_000, 1_500_001_000))
+    assert topo.rate("10.0.0.1", 24) == 200_000_000.0  # out is busier now, only last two kept
+    assert topo.speed("10.0.0.1", "24") == 1000.0
+
+
+def test_counter_wrap_reset_and_bad_time_give_no_rate():
+    topo = Topology()
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 0, 5_000, 5_000))
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 60_000, 10, 6_000))  # reset
+    assert topo.rate("10.0.0.1", "24") is None
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 60_000, 20, 7_000))  # same time
+    assert topo.rate("10.0.0.1", "24") is None
+
+
+def test_missing_or_zero_speed_is_none():
+    topo = Topology()
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 0, 0, 0, speed=None))
+    assert topo.speed("10.0.0.1", "24") is None
+    topo.update(counters("10.0.0.1", "core1", 25, "Gi1/0/25", 0, 0, 0))
+    topo.update(counters("10.0.0.1", "core1", 25, "Gi1/0/25", 60_000, 0, 0, speed=0))
+    assert topo.speed("10.0.0.1", "25") is None
+    assert topo.rate("10.0.0.1", "25") == 0.0
+    assert topo.rate("10.0.0.9", "1") is None
+
+
+def test_edges_merge_both_ends():
+    topo = core_topology()
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 0, 0, 0, speed=10_000))
+    topo.update(counters("10.0.0.1", "core1", 24, "Gi1/0/24", 60_000, 75_000_000, 0))
+    topo.update(counters("10.0.0.2", "core2", 517, "ge-0/0/1", 0, 0, 0, speed=1000))
+    topo.update(counters("10.0.0.2", "core2", 517, "ge-0/0/1", 60_000, 0, 150_000_000))
+    topo.update(counters("10.0.0.3", "edge1", 3, "Gi0/3", 0, 0, 0, speed=100))
+    assert topo.edges() == [
+        {
+            "a": "10.0.0.1",
+            "a_if": "Gi1/0/24",
+            "b": "10.0.0.2",
+            "b_if": "ge-0/0/1",
+            "speed_mbps": 1000.0,  # min of both ends
+            "load_bps": 20_000_000.0,  # max of both ends
+        },
+        {
+            # only edge1 reports it, core2's port name is unknown: kept as LLDP says
+            "a": "10.0.0.2",
+            "a_if": "ge-0/0/2",
+            "b": "10.0.0.3",
+            "b_if": "Gi0/3",
+            "speed_mbps": 100.0,
+            "load_bps": None,
+        },
+    ]

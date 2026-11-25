@@ -2,7 +2,8 @@
 
 Rows used:
 - any row: tag `sysName` + `source_ip` -> name-to-IP map (resolves lldpRemSysName to a device IP)
-- `snmp_interface`: tags `index` (ifIndex) + `ifName`
+- `snmp_interface`: tags `index` (ifIndex) + `ifName`, fields `ifHighSpeed` (Mbps),
+  `ifHCInOctets`, `ifHCOutOctets`, row `polled_at` (Unix ms) -> speed and rate per ifIndex
 - `snmp_lldp_neighbor`: tag `index` = "timeMark.localPortNum.remIndex",
   fields `lldpRemSysName`, `lldpRemChassisId`, `lldpRemPortId`, `lldpRemPortDesc`
 Assumes lldpLocPortNum == ifIndex (lldpLocPortTable is not polled). Pure, in memory.
@@ -41,6 +42,9 @@ class Topology:
         self._names: dict[str, str] = {}  # short sysName -> device IP
         self._ifnames: dict[str, dict[str, str]] = {}  # device -> ifIndex -> ifName
         self._lldp: dict[str, dict[str, tuple[str, str | None]]] = {}  # device -> port -> remote
+        self._speed: dict[tuple[str, str], float] = {}  # (device, ifIndex) -> Mbps
+        # (device, ifIndex) -> last two (polled_at ms, in octets, out octets)
+        self._samples: dict[tuple[str, str], list[tuple[float, int, int]]] = {}
 
     def update(self, metric: dict) -> None:
         tags, fields = metric.get("tags") or {}, metric.get("fields") or {}
@@ -50,8 +54,10 @@ class Topology:
         if name := tags.get("sysName"):
             self._names[_short(name)] = device
         measurement, index = metric.get("measurement"), str(tags.get("index") or "")
-        if measurement == "snmp_interface" and index and tags.get("ifName"):
-            self._ifnames.setdefault(device, {})[index] = tags["ifName"]
+        if measurement == "snmp_interface" and index:
+            if tags.get("ifName"):
+                self._ifnames.setdefault(device, {})[index] = tags["ifName"]
+            self._counters(device, index, fields, metric.get("polled_at"))
         elif measurement == "snmp_lldp_neighbor":
             parts = index.split(".")
             remote = fields.get("lldpRemSysName") or fields.get("lldpRemChassisId")
@@ -83,3 +89,83 @@ class Topology:
                 if self._ip(remote) == device_ip and ifkey(rport) == key:
                     return device, self._ifnames.get(device, {}).get(port)
         return None
+
+    def _counters(self, device: str, index: str, fields: dict, polled_at: object) -> None:
+        key = (device, index)
+        speed = fields.get("ifHighSpeed")
+        if _num(speed):
+            if speed > 0:
+                self._speed[key] = float(speed)
+            else:  # 0 = the agent doesn't know the speed
+                self._speed.pop(key, None)
+        ins, outs = fields.get("ifHCInOctets"), fields.get("ifHCOutOctets")
+        if _num(ins) and _num(outs) and _num(polled_at):
+            samples = self._samples.setdefault(key, [])
+            samples.append((float(polled_at), int(ins), int(outs)))
+            del samples[:-2]
+
+    def speed(self, device_ip: str, if_index: str) -> float | None:
+        return self._speed.get((device_ip, str(if_index)))
+
+    def rate(self, device_ip: str, if_index: str) -> float | None:
+        """bits/s from the last two samples, max of in/out; None on counter wrap/reset."""
+        samples = self._samples.get((device_ip, str(if_index)), [])
+        if len(samples) < 2:
+            return None
+        (t1, in1, out1), (t2, in2, out2) = samples
+        dt = (t2 - t1) / 1000
+        if dt <= 0 or in2 < in1 or out2 < out1:
+            return None
+        return max(in2 - in1, out2 - out1) * 8 / dt
+
+    def _port(self, device_ip: str, name: str | None) -> str | None:
+        """Interface name or 'ifIndex N' -> ifIndex on that device."""
+        if m := _IFINDEX.match(name or ""):
+            return m[1]
+        key = ifkey(name)
+        for port, ifname in self._ifnames.get(device_ip, {}).items():
+            if key and ifkey(ifname) == key:
+                return port
+        return None
+
+    def edges(self) -> list[dict]:
+        """One dict per LLDP link, both ends' reports merged; speed = min, load = max of ends."""
+        merged: dict[tuple, list[tuple[str, str | None, str | None]]] = {}
+        for device, ports in self._lldp.items():
+            for port, (remote, rport) in ports.items():
+                far = self._ip(remote)
+                if far == device:
+                    continue
+                far_port = self._port(far, rport)
+                near = (device, port, self._ifnames.get(device, {}).get(port))
+                if far_port is None:
+                    # ponytail: unresolved far port (description, MAC) can't merge with the far
+                    # end's own report; poll lldpLocPortTable if duplicates show up
+                    end = (far, None, rport)
+                    pid = f"name:{ifkey(rport)}"
+                else:
+                    end = (far, far_port, self._ifnames.get(far, {}).get(far_port) or rport)
+                    pid = far_port
+                key = tuple(sorted([(device, port), (far, pid)]))
+                merged.setdefault(key, sorted([near, end], key=lambda e: (e[0], e[1] or "")))
+        out = []
+        for key in sorted(merged):
+            (a, a_port, a_if), (b, b_port, b_if) = merged[key]
+            ends = [(a, a_port), (b, b_port)]
+            speeds = [s for d, p in ends if p and (s := self.speed(d, p)) is not None]
+            loads = [r for d, p in ends if p and (r := self.rate(d, p)) is not None]
+            out.append(
+                {
+                    "a": a,
+                    "a_if": a_if,
+                    "b": b,
+                    "b_if": b_if,
+                    "speed_mbps": min(speeds) if speeds else None,
+                    "load_bps": max(loads) if loads else None,
+                }
+            )
+        return out
+
+
+def _num(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)

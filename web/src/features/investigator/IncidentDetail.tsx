@@ -11,6 +11,7 @@ import {
   type IncidentStatus,
   type Severity,
 } from "./api";
+import { Reroute } from "./Reroute";
 
 export const STATUS_PILL: Record<IncidentStatus, { status: Status; label: string }> = {
   open: { status: "accent", label: "Open" },
@@ -173,6 +174,11 @@ export function IncidentDetail({
           </ul>
         )}
       </section>
+
+      {incident.reroute &&
+        (incident.reroute.flows.length > 0 || incident.reroute.isolated.length > 0) && (
+          <Reroute reroute={incident.reroute} />
+        )}
 
       <section className="detail__section">
         <div className="detail__row">

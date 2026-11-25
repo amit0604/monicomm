@@ -10,7 +10,8 @@ from collections import deque
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 
-from app.modules.investigator.events import STATEFUL, NetEvent
+from app.modules.investigator import reroute
+from app.modules.investigator.events import COLD_START, STATEFUL, NetEvent
 from app.modules.investigator.topology import Topology, ifkey
 
 FLAP_COUNT = 3  # link downs on one interface within the window
@@ -71,9 +72,18 @@ def _lineproto_down(e: NetEvent) -> bool:
 
 
 class Correlator:
-    def __init__(self, window_s: int = 120, topology: Topology | None = None) -> None:
+    def __init__(
+        self,
+        window_s: int = 120,
+        topology: Topology | None = None,
+        *,
+        ref_bw_mbps: float = 100000.0,
+        util_warn: float = 0.8,
+    ) -> None:
         self.window_s = window_s
         self.topology = topology or Topology()
+        self.ref_bw_mbps = ref_bw_mbps
+        self.util_warn = util_warn
         self._open: dict[str, dict] = {}
         self._recent: deque[NetEvent] = deque(maxlen=MAX_RECENT)  # all events, window only
         self._held: list[NetEvent] = []  # LINEPROTO downs waiting HOLD_S for an admin-down line
@@ -190,6 +200,7 @@ class Correlator:
             "notes": "",
             "resolution": "",
             "analysis": None,
+            "reroute": None,
         }
 
     def _add(self, inc: dict, ev: NetEvent, abnormal: bool) -> None:
@@ -257,6 +268,51 @@ class Correlator:
             impact=impact,
             status="recovered" if impact and all(i["recovered"] for i in impact) else "open",
         )
+        inc["reroute"] = self._reroute(tl, _dt(inc["updated_at"]))
+
+    def _reroute(self, tl: list[dict], now: datetime) -> dict | None:
+        """Predicted/recommended paths around links and devices still down; None if nothing is."""
+        try:
+            down: dict[tuple, tuple[str, str | None]] = {}  # link key -> (device, interface)
+            for e in tl:  # tl is sorted: the last state per port wins
+                if e["type"] != "link":
+                    continue
+                if e["state"] == "up":
+                    down.pop(_key(e), None)
+                elif e["state"] == "down" and e["abnormal"]:
+                    down.setdefault(_key(e), (e["device"], e["interface"]))
+            failed_links = list(down.values())
+            failed_devices = {
+                e["device"]
+                for e in tl
+                if e["type"] == "hw_env" and (e["code"] or "").lstrip(".") == COLD_START
+            }
+            if down:
+                cut = {(k[1], k[2]) for k in down}
+                ends: dict[str, list[bool]] = {}  # device -> is each of its LLDP links down
+                for ed in self.topology.edges():
+                    gone = (ed["a"], ifkey(ed["a_if"])) in cut or (
+                        ed["b"],
+                        ifkey(ed["b_if"]),
+                    ) in cut
+                    ends.setdefault(ed["a"], []).append(gone)
+                    ends.setdefault(ed["b"], []).append(gone)
+                devices = {e["device"] for e in tl}
+                # a single-homed device with its one link down is cut off, not failed:
+                # reroute reports it as isolated instead
+                failed_devices |= {d for d in devices if len(ends.get(d, [])) >= 2 and all(ends[d])}
+            if not (failed_links or failed_devices):
+                return None
+            return reroute.compute(
+                self.topology,
+                failed_links,
+                sorted(failed_devices),
+                self.ref_bw_mbps,
+                self.util_warn,
+                now,
+            )
+        except Exception:  # a rerouting bug must never cost us the incident
+            return None
 
     @staticmethod
     def _critical(e: dict) -> bool:
