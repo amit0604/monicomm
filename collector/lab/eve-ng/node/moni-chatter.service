@@ -1,0 +1,6 @@
+[Unit]
+Description=Monicomm lab background event
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/moni-sim random

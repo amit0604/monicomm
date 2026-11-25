@@ -1,0 +1,12 @@
+[Unit]
+Description=Monicomm lab node setup (IP, SNMP, syslog)
+After=network-pre.target systemd-networkd.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/moni-node-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

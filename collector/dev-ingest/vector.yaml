@@ -16,6 +16,13 @@ sources:
       verify_certificate: true   # require a client certificate signed by our CA
 
 transforms:
+  # Collector events (syslog, traps, SNMP metrics) all carry a `schema` field. The collectors' own
+  # health counters are Vector metric events without it; they go to collector_health.jsonl instead.
+  events_only:
+    type: filter
+    inputs: [collectors]
+    condition: exists(.schema)
+
   health_as_log:
     type: metric_to_log
     inputs: [collectors]
@@ -23,7 +30,7 @@ transforms:
 sinks:
   events:
     type: file
-    inputs: [collectors]
+    inputs: [events_only]
     path: /data/%Y-%m-%d/{{ kind }}.jsonl
     encoding:
       codec: json

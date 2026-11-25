@@ -1,0 +1,71 @@
+#!/bin/sh
+# Monicomm lab node: apply /etc/moni-node.conf (name, IP, style) and the SNMP credentials on every boot.
+set -eu
+. /etc/moni-node.conf
+. /etc/moni-snmp.env
+
+hostnamectl set-hostname "$NODE_NAME" 2>/dev/null || echo "$NODE_NAME" > /etc/hostname
+ssh-keygen -A >/dev/null   # per-node SSH host keys (cloud-init, which normally makes them, is disabled)
+grep -q " $NODE_NAME\$" /etc/hosts || echo "127.0.1.1 $NODE_NAME" >> /etc/hosts
+
+# Static IP on the first Ethernet port (connected to EVE-NG Cloud0 = LAN).
+IF=$(ls /sys/class/net | grep -E '^(ens|enp|eth)' | head -n 1)
+rm -f /etc/netplan/50-cloud-init.yaml
+cat > /etc/netplan/60-moni.yaml <<EOF
+network:
+  version: 2
+  ethernets:
+    $IF:
+      dhcp4: false
+      addresses: [$NODE_IP]
+      routes: [{to: default, via: $GATEWAY}]
+      nameservers: {addresses: [$DNS]}
+EOF
+chmod 600 /etc/netplan/60-moni.yaml
+netplan apply
+
+# Dummy "switch ports" that moni-sim can take down/up (real ifOperStatus changes -> linkDown/linkUp informs).
+for i in 1 2 3 4; do
+  ip link show "port$i" >/dev/null 2>&1 || ip link add "port$i" type dummy
+  ip link set "port$i" up
+done
+
+# Look like the vendor to inventory (sysDescr / sysObjectID). Clearly marked as a simulation.
+if [ "$STYLE" = junos ]; then
+  SYSDESCR="Juniper Networks, Inc. ex2300-24t Ethernet Switch, kernel JUNOS 21.4R3-S5 [Monicomm lab simulation]"
+  SYSOID=".1.3.6.1.4.1.2636.1.1.1.2.132"   # Juniper enterprise (2636); model part illustrative
+else
+  SYSDESCR="Cisco IOS Software, C2960X Software (C2960X-UNIVERSALK9-M), Version 15.2(7)E8 [Monicomm lab simulation]"
+  SYSOID=".1.3.6.1.4.1.9.1.1208"           # Cisco enterprise (9); model part illustrative
+fi
+
+# SNMPv3 agent: read-only moni-poll user, informs to the collector with moni-trap.
+cat > /etc/snmp/snmpd.conf <<EOF
+agentAddress udp:161
+sysName $NODE_NAME
+sysDescr $SYSDESCR
+sysObjectID $SYSOID
+sysLocation Monicomm EVE-NG lab ($STYLE style)
+sysContact monicomm-lab
+createUser $SNMP_USER SHA "$SNMP_AUTH_PASS" AES "$SNMP_PRIV_PASS"
+rouser $SNMP_USER priv
+# Internal user for the agent's own link monitoring, limited to the interface tables.
+view ifview included .1.3.6.1.2.1.2
+view ifview included .1.3.6.1.2.1.31
+createUser internalUser
+rouser internalUser noauth -V ifview
+iquerySecName internalUser
+notificationEvent linkUpTrap .1.3.6.1.6.3.1.1.5.4 .1.3.6.1.2.1.2.2.1.1 .1.3.6.1.2.1.2.2.1.7 .1.3.6.1.2.1.2.2.1.8
+notificationEvent linkDownTrap .1.3.6.1.6.3.1.1.5.3 .1.3.6.1.2.1.2.2.1.1 .1.3.6.1.2.1.2.2.1.7 .1.3.6.1.2.1.2.2.1.8
+monitor -r 5 -e linkUpTrap linkUp .1.3.6.1.2.1.2.2.1.8 != 2
+monitor -r 5 -e linkDownTrap linkDown .1.3.6.1.2.1.2.2.1.8 == 2
+trapsess -Ci -v3 -l authPriv -u $TRAP_USER -a SHA -A "$TRAP_AUTH_PASS" -x AES -X "$TRAP_PRIV_PASS" $COLLECTOR:162
+EOF
+chown root:Debian-snmp /etc/snmp/snmpd.conf
+chmod 640 /etc/snmp/snmpd.conf
+
+# Syslog: everything to the collector over UDP 514.
+echo "*.* @$COLLECTOR:514" > /etc/rsyslog.d/60-moni.conf
+
+systemctl restart --no-block rsyslog snmpd
+logger -t moni-node "monicomm lab node $NODE_NAME up ($STYLE style, $NODE_IP)"
