@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.modules.chat.router import router as chat_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.investigator.router import router as investigator_router
+from app.modules.mapper.router import router as mapper_router
 from app.modules.pcap.router import router as pcap_router
 
 MODULES = [
@@ -58,6 +59,7 @@ app.include_router(investigator_router)
 app.include_router(pcap_router, prefix="/api/v1/pcap")
 app.include_router(dashboard_router)
 app.include_router(chat_router)
+app.include_router(mapper_router)
 
 
 @app.get("/api/v1/health")

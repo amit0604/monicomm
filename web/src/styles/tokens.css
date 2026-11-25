@@ -98,6 +98,12 @@
   --chart-7: #f5d36b;
   --chart-8: #a8d672;
 
+  /* Mapper link media (from the chart palette, PROJECT.md 6A). Status is the line style, not these. */
+  --link-fiber: var(--chart-3);
+  --link-copper: var(--chart-1);
+  --link-wireless: var(--chart-2);
+  --link-wan: var(--chart-4);
+
   color-scheme: light;
 }
 

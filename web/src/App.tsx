@@ -7,6 +7,7 @@ import { Button, EmptyState } from "./components/ui";
 import { ChatPage } from "./features/chat/ChatPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
+import { MapperPage } from "./features/mapper/MapperPage";
 import { useCriticalIncidentToasts } from "./features/investigator/useIncidents";
 import { ChatchupTab } from "./features/pcap/ChatchupTab";
 import { I18nProvider, useI18n } from "./i18n";
@@ -37,6 +38,8 @@ function Shell() {
         return <ChatPage />;
       case "investigator":
         return <InvestigatorPage selectedId={incidentId} onSelect={setIncidentId} />;
+      case "mapper":
+        return <MapperPage theme={theme} />;
       case "pcap":
         return <ChatchupTab theme={theme} />;
       default:

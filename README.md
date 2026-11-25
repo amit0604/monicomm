@@ -20,7 +20,7 @@ Open http://localhost:8080. Add the local LLM with `docker compose --profile llm
 | Chat AI (ChatIAF) | Built: in-browser prototype, plus a live API backend | `api/app/modules/chat/`, `web/src/features/chat/` |
 | Analyzer | Not started | |
 | Incident Investigator | Built: live incident analyzer | `api/app/modules/investigator/`, `web/src/features/investigator/` |
-| Mapper | Not started | |
+| Mapper | Built, on demo data | `api/app/modules/mapper/`, `web/src/features/mapper/` |
 | Chatchup (PCAP) | Built | `api/app/modules/pcap/`, `web/src/features/pcap/` |
 
 The collectors (syslog and SNMP servers) are separate deployments in `collector/`, each with its own README.
@@ -50,7 +50,7 @@ cd api; uv sync; cd ..\web; npm ci; cd ..
 ```
 The first command turns on the required pre-push hook: every `git push` runs the tests and is cancelled if they fail.
 
-To see the dashboard without a network, set `MONICOMM_ENV=dev` and `MONICOMM_DEMO_DATA=true` in `.env` and run the API with
+To see the Dashboard and the Mapper without a network, set `MONICOMM_ENV=dev` and `MONICOMM_DEMO_DATA=true` in `.env` and run the API with
 `uv run --env-file ../.env uvicorn app.main:app --reload`. The data is fabricated and labelled DEMO.
 
 ## Before you push
