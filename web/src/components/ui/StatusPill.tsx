@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, CircleDot, CircleHelp, Info, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleHelp, Info, Sparkles, TriangleAlert } from "lucide-react";
 
 export type Status = "ok" | "warning" | "critical" | "info" | "neutral" | "accent";
 
@@ -8,7 +8,7 @@ const ICONS = {
   critical: CircleAlert,
   info: Info,
   neutral: CircleHelp,
-  accent: CircleDot,
+  accent: Sparkles,
 } as const;
 
 // Status is always color + icon + text (PROJECT.md section 6A), never color alone.
@@ -20,4 +20,22 @@ export function StatusPill({ status, label }: { status: Status; label: string })
       {label}
     </span>
   );
+}
+
+/** Syslog severity → status color (PROJECT.md 6A). */
+export function severityToStatus(severity: string): Status {
+  switch (severity) {
+    case "emerg":
+    case "alert":
+    case "crit":
+      return "critical";
+    case "err":
+    case "warning":
+      return "warning";
+    case "notice":
+    case "info":
+      return "info";
+    default:
+      return "neutral";
+  }
 }

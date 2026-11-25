@@ -1,5 +1,4 @@
-import { EmptyState, ErrorState, Skeleton } from "../../components/ui/States";
-import { StatusPill } from "../../components/ui/StatusPill";
+import { EmptyState, ErrorState, Skeleton, StatusPill } from "../../components/ui";
 import type { IncidentStatus, IncidentSummary } from "./api";
 import { formatTime, IncidentDetail, SEVERITY_PILL, STATUS_PILL } from "./IncidentDetail";
 import { useIncidentList } from "./useIncidents";
@@ -22,9 +21,10 @@ export function InvestigatorPage({
     body = <ErrorState message={`Could not load incidents. ${error}`} onRetry={reload} />;
   else if (data.length === 0)
     body = (
-      <EmptyState title="No abnormal events. The network looks normal.">
-        <p className="state__hint">New incidents appear here automatically.</p>
-      </EmptyState>
+      <EmptyState
+        title="No abnormal events. The network looks normal."
+        body="New incidents appear here automatically."
+      />
     );
   else
     body = GROUPS.map((g) => (

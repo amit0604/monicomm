@@ -1,8 +1,6 @@
+import { Button, AiTag, ErrorState, Skeleton, StatusPill, type Status } from "../../components/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Lock, LockOpen, Save, Sparkles, X } from "lucide-react";
-import { Button } from "../../components/ui/Button";
-import { AiTag, ErrorState, Skeleton } from "../../components/ui/States";
-import { StatusPill, type Status } from "../../components/ui/StatusPill";
 import {
   analyzeIncident,
   ApiError,

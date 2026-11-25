@@ -1,78 +1,76 @@
-import { useCallback, useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
-import { MODULES, type ModuleId } from "./modules";
+import { useCallback, useState } from "react";
+import { Construction } from "lucide-react";
 import { Toaster } from "sonner";
-import { StatusPill } from "./components/ui/StatusPill";
-import { ChatchupTab } from "./features/pcap/ChatchupTab";
+import { AppShell } from "./components/layout/AppShell";
+import { MODULE_LIST } from "./components/layout/modules";
+import { Button, EmptyState } from "./components/ui";
+import { ChatPage } from "./features/chat/ChatPage";
 import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
 import { useCriticalIncidentToasts } from "./features/investigator/useIncidents";
+import { ChatchupTab } from "./features/pcap/ChatchupTab";
+import { I18nProvider, useI18n } from "./i18n";
+import { useTheme } from "./lib/theme";
+import { useHashRoute } from "./lib/useHashRoute";
 
-type Theme = "light" | "dark";
+function Shell() {
+  const [route, navigate] = useHashRoute();
+  const { theme, toggle } = useTheme();
+  const { t, dir } = useI18n();
+  const [incidentId, setIncidentId] = useState<string | null>(null);
+  const module = MODULE_LIST.find((m) => m.id === route) ?? MODULE_LIST[1];
 
-function initialTheme(): Theme {
-  if (typeof window.matchMedia !== "function") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  const openIncident = useCallback(
+    (id: string) => {
+      navigate("investigator");
+      setIncidentId(id);
+    },
+    [navigate],
+  );
+  useCriticalIncidentToasts(openIncident);
+
+  function page() {
+    switch (route) {
+      case "chat":
+        return <ChatPage />;
+      case "investigator":
+        return <InvestigatorPage selectedId={incidentId} onSelect={setIncidentId} />;
+      case "pcap":
+        return <ChatchupTab theme={theme} />;
+      default:
+        return (
+          <EmptyState
+            icon={<Construction size={28} />}
+            title={t("placeholder.title", { module: t(module.label) })}
+            body={t("placeholder.body")}
+          >
+            <Button variant="primary" onClick={() => navigate("chat")}>
+              {t("placeholder.cta")}
+            </Button>
+          </EmptyState>
+        );
+    }
+  }
+
+  return (
+    <>
+      <AppShell
+        active={route}
+        title={t(module.label)}
+        theme={theme}
+        onNavigate={navigate}
+        onToggleTheme={toggle}
+      >
+        {page()}
+      </AppShell>
+      <Toaster theme={theme} dir={dir} position="bottom-right" richColors closeButton />
+    </>
+  );
 }
 
 export default function App() {
-  const [active, setActive] = useState<ModuleId>("dashboard");
-  const [theme, setTheme] = useState<Theme>(initialTheme);
-  const [incidentId, setIncidentId] = useState<string | null>(null);
-
-  const openIncident = useCallback((id: string) => {
-    setActive("investigator");
-    setIncidentId(id);
-  }, []);
-  useCriticalIncidentToasts(openIncident);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-
-  const current = MODULES.find((m) => m.id === active)!;
-
   return (
-    <div className="shell">
-      <nav className="nav" aria-label="Modules">
-        <div className="nav__brand">Monicomm</div>
-        {MODULES.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            className="nav__item"
-            aria-current={m.id === active ? "page" : undefined}
-            onClick={() => setActive(m.id)}
-          >
-            <span className="nav__dot" style={{ background: `var(--accent-${m.id})` }} />
-            {m.name}
-          </button>
-        ))}
-      </nav>
-      <div>
-        <header className="topbar">
-          <h1>{current.name}</h1>
-          <button
-            type="button"
-            className="button"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-          >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-        </header>
-        <main className="content">
-          {active === "pcap" ? (
-            <ChatchupTab theme={theme} />
-          ) : active === "investigator" ? (
-            <InvestigatorPage selectedId={incidentId} onSelect={setIncidentId} />
-          ) : (
-            <section className="panel">
-              <StatusPill status="info" label="Coming soon" />
-            </section>
-          )}
-        </main>
-        <Toaster theme={theme} position="bottom-right" closeButton />
-      </div>
-    </div>
+    <I18nProvider>
+      <Shell />
+    </I18nProvider>
   );
 }

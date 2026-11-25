@@ -2,13 +2,28 @@ import type { ButtonHTMLAttributes } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
-// Shared button (PROJECT.md 6A). Keep one primary button per view.
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: Variant;
+  size?: "md" | "sm";
+  iconOnly?: boolean;
+}
+
 export function Button({
   variant = "secondary",
+  size = "md",
+  iconOnly = false,
   className,
   type = "button",
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
-  const cls = ["button", `button--${variant}`, className].filter(Boolean).join(" ");
-  return <button type={type} className={cls} {...props} />;
+  ...rest
+}: ButtonProps) {
+  const classes = [
+    "btn",
+    `btn--${variant}`,
+    size === "sm" && "btn--sm",
+    iconOnly && "btn--icon",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return <button type={type} className={classes} {...rest} />;
 }

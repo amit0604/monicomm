@@ -18,6 +18,15 @@
   --text-xl: 24px;
   --text-2xl: 32px;
 
+  /* Line heights, paired with the text sizes above (PROJECT.md 6A table) */
+  --leading-xs: 16px;
+  --leading-sm: 18px;
+  --leading-base: 20px;
+  --leading-md: 24px;
+  --leading-lg: 28px;
+  --leading-xl: 32px;
+  --leading-2xl: 40px;
+
   /* Spacing (4px grid) */
   --space-1: 4px;
   --space-2: 8px;
@@ -36,8 +45,15 @@
   --shadow-1: 0 1px 2px rgb(31 36 51 / 6%), 0 1px 3px rgb(31 36 51 / 8%);
   --shadow-2: 0 8px 24px rgb(31 36 51 / 12%);
   --motion-fast: 150ms ease-out;
+  --motion-base: 200ms ease-out;
   --nav-width: 240px;
   --nav-width-collapsed: 64px;
+  --topbar-height: 56px;
+
+  /* ChatIAF conversation */
+  --bubble-user: var(--primary-soft);
+  --bubble-assistant: var(--surface);
+  --chat-wallpaper: var(--bg);
 
   /* Light theme surfaces */
   --bg: #f6f7fb;
@@ -108,6 +124,7 @@
   --info-strong: #82b8f5;
   --neutral-strong: #b0b5c6;
   --accent-strong: #ffb07f;
+  --bubble-user: #2e2c4d;
 
   color-scheme: dark;
 }

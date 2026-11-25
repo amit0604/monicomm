@@ -39,6 +39,18 @@ same data store and the same local LLM service.
   our own documents (runbooks, vendor manuals uploaded by us) through local RAG.
 - **Must have:** cites the source of each answer (device, log line, time range); never
   runs write or config actions on network devices; keeps per-user conversation history.
+- **Changes (ChatIAF, DECIDED):** the AI is read-only. It can *propose* a change, which shows in the chat as
+  an impact card (commands/OIDs, IMPACT analysis, warnings, rollback plan). Only the technician's
+  **Approve** button sends it to the configurator (docs/plans/syslog-snmp-deployment.md §7). High-risk
+  changes need an explicit acknowledgement; routers, firewalls and core switches need a second approver.
+  Every tool call the AI makes is visible in the conversation. UI: `web/src/features/chat/`.
+- **Scope (DECIDED):** networking, computer communications, IT infrastructure, OSI, TCP/IP, routing and switching,
+  DNS/DHCP, monitoring, servers, logs and alerts, defensive security, troubleshooting, root cause, impact, MoniComm usage.
+  Off-topic requests are declined; mixed requests get only the in-scope part; attempts to override the rules are refused.
+- **Prototype status:** no model is connected yet. Replies come from a rule-based intent classifier, demo scenarios on
+  mock data and a small local knowledge base, and the UI labels them as such (Prototype mode, Mock data, Simulated AI, Read-only).
+  The system prompt template for the future model is `api/app/ai/prompts/chat_system.md`; the code-enforced rules are in
+  `web/src/features/chat/policy.ts`.
 - **Later:** suggested next steps, hand-off to Incident Investigator ("open an investigation from this chat").
 
 ### 2.2 Dashboard: network overview
@@ -299,7 +311,13 @@ Rules that keep this working:
 - **PROPOSED:** Tailwind CSS + shadcn/ui. Needs team approval before adding.
 - Charts: **PROPOSED** Apache ECharts (handles large time series). Topology graph: **PROPOSED** Cytoscape.js or React Flow.
 - One page per feature, plus a shared layout (side nav with the six features, global search with ⌘K).
-- Hebrew/RTL support? **OPEN QUESTION.**
+- **Language (DECIDED):** English first, with RTL supported from day one; Hebrew strings come later.
+  All UI text goes through `web/src/i18n/` (`t('key')`), and CSS uses logical properties only
+  (`margin-inline-start`, `inset-inline-end`, ...), never `left`/`right`. Commands, configs and IPs stay LTR.
+- **Styling (for now):** plain CSS files per feature using the tokens, no Tailwind until the team decides (open question 8).
+- **Shell (built):** module list `web/src/modules.ts`, layout `web/src/components/layout/` (side nav, top bar with
+  time range, RTL and theme toggles), shared components `web/src/components/ui/`, tokens `web/src/styles/tokens.css`,
+  global styles `web/src/styles/app.css`. Each module adds a page under `web/src/features/<module>/` and a case in `web/src/App.tsx`.
 
 ---
 
@@ -360,7 +378,8 @@ All UI is built from shared components in `web/src/components/ui/`. Don't restyl
 | `--primary` | `#8E85F5` |
 
 Both themes are required. The default follows the OS setting, and there's a toggle in the top bar.
-In dark mode, the `-soft` status colors become their `-strong` color at about 18% opacity.
+In dark mode, the `-strong` status colors are lifted for contrast on dark surfaces (values in `tokens.css`),
+and the `-soft` colors become their `-strong` color at 18% opacity.
 
 ### Status colors (monday-style pills; the same everywhere)
 Each status has a **soft** background and a **strong** text/icon color. Every pair below is checked to pass WCAG AA (≥ 4.5:1).
@@ -527,14 +546,14 @@ and a one-line entry in the decision log below.
 | Area | Owner | Backup |
 |---|---|---|
 | Project lead / architecture | _TBD_ | |
-| Chat AI | _TBD_ | |
+| Chat AI (ChatIAF) | tomer775 | |
 | Dashboard | _TBD_ | |
 | Analyzer (SNMP / syslog / logs) | _TBD_ | |
 | Incident Investigator | _TBD_ | |
 | Mapper | _TBD_ | |
 | Chatchup (PCAP) | _TBD_ | |
 | Platform: Docker, DB, LLM, air-gap bundle | _TBD_ | |
-| Front-end shell and design system | _TBD_ | |
+| Front-end shell and design system | tomer775 | |
 
 **Target hardware (fill in):** CPU ___, RAM ___, GPU ___ (VRAM ___), disk ___, OS ___
 
@@ -570,7 +589,7 @@ and a one-line entry in the decision log below.
 2. Target hardware: is there a GPU? That decides the model size and Ollama vs vLLM.
 3. Expected scale: number of devices, syslog messages per second, PCAP sizes.
 4. Which hypervisors / container platforms must the Mapper support?
-5. UI language: English only, or Hebrew/RTL too?
+5. ~~UI language~~ Answered: English first with RTL support, Hebrew later (§6).
 6. Authentication: local users or LDAP/Active Directory?
 7. Data retention period for logs, metrics and captures.
 8. Tailwind + shadcn/ui for the front end: yes or no?
@@ -594,6 +613,11 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |
 | 2026-11-25 | Syslog server and SNMP server are separate Docker deployments on their own vSphere VMs, forwarding to Monicomm over mTLS; device credentials and config writes live only on the SNMP server | PROPOSED |
 | 2026-11-25 | Chatchup = PCAP module; parser is `dpkt` (pure Python), tshark/Zeek only if deeper dissection is needed | DECIDED |
+| 2026-11-25 | Chat AI is read-only: it proposes changes, a human approves in the UI, the configurator applies (§2.1) | DECIDED |
+| 2026-11-25 | UI in English first with RTL support built in; Hebrew later (§6) | DECIDED |
+| 2026-11-25 | Front-end shell, tokens and shared components built in `web/` (React 19 + TS + Vite, plain CSS + tokens) | DECIDED |
+| 2026-11-25 | Chat AI answers only networking/IT topics (§2.1 scope); prototype labels mock data and simulated AI explicitly | DECIDED |
+| 2026-11-25 | Chat system prompt lives in `api/app/ai/prompts/chat_system.md`; enforcement stays in code, not in the prompt | PROPOSED |
 
 ---
 
