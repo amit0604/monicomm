@@ -76,6 +76,15 @@ def test_closed_when_login_is_off(client, monkeypatch):
     assert client.put(URL, json=FORM | {"api_key": KEY}).status_code == 403
 
 
+def test_closed_outside_dev(client, monkeypatch, tmp_path):
+    monkeypatch.setenv("MONICOMM_ENV", "prod")
+    get_settings.cache_clear()
+    for method, path in (("GET", URL), ("PUT", URL), ("DELETE", URL), ("POST", f"{URL}/test")):
+        res = client.request(method, path, json=FORM | {"api_key": KEY})
+        assert (res.status_code, res.json()["detail"]) == (403, "dev_only")
+    assert not (tmp_path / "llm.json").exists()
+
+
 def test_saves_the_key_and_never_returns_it(client):
     assert client.get(URL).json()["key_source"] == "none"
     res = client.put(URL, json=FORM | {"api_key": KEY})
