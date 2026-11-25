@@ -1,0 +1,8 @@
+name,ip,vendor,role
+# Copy to devices.csv and list every device to poll. vendor: cisco|juniper. role: switch|router|firewall.
+# Restart the poller after editing: docker compose restart poller
+core-sw-01,10.0.0.1,cisco,switch
+edge-rtr-01,10.0.0.2,cisco,router
+dist-sw-01,10.0.1.1,juniper,switch
+wan-mx-01,10.0.1.2,juniper,router
+fw-srx-01,10.0.1.3,juniper,firewall

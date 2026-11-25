@@ -115,7 +115,8 @@ their own Docker deployment on their own VM on the management network. They rece
 buffer it to disk, and forward it to Monicomm over mutual TLS. The SNMP server holds all device credentials
 and runs the `configurator`, the only component allowed to change device config, and only on a
 human-approved request. Monicomm has no route to network devices. Full plan:
-`docs/plans/syslog-snmp-deployment.md`.
+`docs/plans/syslog-snmp-deployment.md`. Setup: `docs/runbooks/collector-servers-setup.md`.
+Event contract between the collectors and Monicomm `ingest`: `collector/README.md`.
 
 ### Containers in the Monicomm deployment (one service each in `docker-compose.yml`)
 

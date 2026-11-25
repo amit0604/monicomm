@@ -1,0 +1,11 @@
+# Secrets and site data: never commit (PROJECT.md §10)
+.env
+**/secrets/*
+!**/secrets/*.example
+**/certs/*
+!**/certs/README.md
+collector/pki/out/
+collector/snmp-server/inventory/devices.csv
+
+# Offline bundles
+deploy/offline/dist/
