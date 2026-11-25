@@ -1,0 +1,204 @@
+/* Chatchup tab. Scoped under .chatchup so it cannot leak into other tabs.
+   Every value reads the site's design tokens (web/src/styles/tokens.css, PROJECT.md 6A);
+   the second argument is the 6A value, used only until tokens.css exists. */
+
+.chatchup {
+  --cc-bg: var(--bg, #f6f7fb);
+  --cc-surface: var(--surface, #ffffff);
+  --cc-surface-2: var(--surface-2, #f0f2f8);
+  --cc-border: var(--border, #e3e6ef);
+  --cc-text: var(--text, #1f2433);
+  --cc-muted: var(--text-muted, #6b7185);
+  --cc-primary: var(--primary, #5b4fd6);
+  --cc-primary-soft: var(--primary-soft, #eceaff);
+  --cc-accent: var(--accent-pcap, #ffc29e);
+  --cc-ok-soft: var(--ok-soft, #d9f5e7);
+  --cc-ok: var(--ok-strong, #1b7a50);
+  --cc-warning-soft: var(--warning-soft, #fff1c7);
+  --cc-warning: var(--warning-strong, #8a5a00);
+  --cc-critical-soft: var(--critical-soft, #ffdde0);
+  --cc-critical: var(--critical-strong, #b42d41);
+  --cc-info-soft: var(--info-soft, #dceeff);
+  --cc-info: var(--info-strong, #2563a8);
+  --cc-neutral-soft: var(--neutral-soft, #ecedf2);
+  --cc-neutral: var(--neutral-strong, #555b6e);
+  --cc-accent-soft: var(--accent-soft, #ffe6d6);
+  --cc-accent-strong: var(--accent-strong, #9c4517);
+  --cc-c1: var(--chart-1, #8ea8ff);
+  --cc-c2: var(--chart-2, #7fd8be);
+  --cc-c3: var(--chart-3, #ffb38a);
+  --cc-c4: var(--chart-4, #c3a6ff);
+  --cc-c5: var(--chart-5, #ff9aa8);
+  --cc-font: var(--font-sans, "Segoe UI", "Segoe UI Variable Text", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif);
+  --cc-mono: var(--font-mono, "Cascadia Mono", Consolas, "Liberation Mono", monospace);
+  --cc-xs: var(--text-xs, 12px);
+  --cc-sm: var(--text-sm, 13px);
+  --cc-base: var(--text-base, 14px);
+  --cc-md: var(--text-md, 16px);
+  --cc-xl: var(--text-xl, 24px);
+  --cc-s1: var(--space-1, 4px);
+  --cc-s2: var(--space-2, 8px);
+  --cc-s3: var(--space-3, 12px);
+  --cc-s4: var(--space-4, 16px);
+  --cc-s6: var(--space-6, 24px);
+  --cc-r-sm: var(--radius-sm, 6px);
+  --cc-r-md: var(--radius-md, 10px);
+  --cc-r-lg: var(--radius-lg, 14px);
+  --cc-r-pill: var(--radius-pill, 999px);
+  --cc-shadow-1: var(--shadow-1, 0 1px 2px rgba(31, 36, 51, 0.06), 0 1px 3px rgba(31, 36, 51, 0.08));
+  --cc-shadow-2: var(--shadow-2, 0 8px 24px rgba(31, 36, 51, 0.12));
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--cc-s4);
+  color: var(--cc-text);
+  font: 400 var(--cc-base) / 1.43 var(--cc-font);
+  position: relative;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chatchup {
+    --cc-bg: var(--bg, #14161f);
+    --cc-surface: var(--surface, #1c1f2b);
+    --cc-surface-2: var(--surface-2, #252938);
+    --cc-border: var(--border, #2f3446);
+    --cc-text: var(--text, #e8eaf2);
+    --cc-muted: var(--text-muted, #9aa0b4);
+    --cc-primary: var(--primary, #8e85f5);
+    --cc-ok-soft: var(--ok-soft, rgba(27, 122, 80, 0.18));
+    --cc-warning-soft: var(--warning-soft, rgba(138, 90, 0, 0.18));
+    --cc-critical-soft: var(--critical-soft, rgba(180, 45, 65, 0.18));
+    --cc-info-soft: var(--info-soft, rgba(37, 99, 168, 0.18));
+    --cc-neutral-soft: var(--neutral-soft, rgba(85, 91, 110, 0.18));
+    --cc-accent-soft: var(--accent-soft, rgba(156, 69, 23, 0.18));
+    --cc-ok: var(--ok-strong, #4cc38a);
+    --cc-warning: var(--warning-strong, #e0a93a);
+    --cc-critical: var(--critical-strong, #ff7b8c);
+    --cc-info: var(--info-strong, #6aa8f0);
+    --cc-neutral: var(--neutral-strong, #b3b8c8);
+    --cc-accent-strong: var(--accent-strong, #ffb38a);
+  }
+}
+
+.chatchup * { box-sizing: border-box; }
+.chatchup [hidden] { display: none !important; }
+.chatchup h3 { font-size: var(--cc-md); font-weight: 600; margin: 0 0 var(--cc-s2); }
+.chatchup .cc-muted { color: var(--cc-muted); }
+.chatchup .cc-small { font-size: var(--cc-xs); }
+.chatchup .cc-mono { font-family: var(--cc-mono); }
+.chatchup .cc-num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.chatchup .cc-spacer { flex: 1; }
+.chatchup .cc-row { display: flex; gap: var(--cc-s2); align-items: center; flex-wrap: wrap; margin: var(--cc-s2) 0; }
+
+/* focus ring on everything interactive */
+.chatchup :is(button, input, select, [tabindex]):focus-visible { outline: 2px solid var(--cc-primary); outline-offset: 2px; }
+
+/* buttons and inputs */
+.chatchup .cc-btn {
+  font: 600 var(--cc-sm) var(--cc-font); border: 0; border-radius: var(--cc-r-md); padding: var(--cc-s2) var(--cc-s4);
+  background: var(--cc-primary); color: var(--cc-surface); cursor: pointer; transition: filter 150ms ease-out;
+}
+.chatchup .cc-btn:hover { filter: brightness(1.08); }
+.chatchup .cc-btn-secondary { background: var(--cc-primary-soft); color: var(--cc-primary); }
+.chatchup .cc-btn-ghost { background: transparent; color: var(--cc-primary); }
+.chatchup .cc-icon { border: 1px solid var(--cc-border); background: var(--cc-surface); color: var(--cc-text); border-radius: var(--cc-r-sm); width: 32px; height: 32px; cursor: pointer; font-size: var(--cc-md); }
+.chatchup .cc-link { background: none; border: 0; padding: 0 var(--cc-s1); color: var(--cc-primary); cursor: pointer; font: inherit; }
+.chatchup input[type="text"], .chatchup input[type="search"], .chatchup select {
+  font: var(--cc-sm) var(--cc-font); color: var(--cc-text); background: var(--cc-surface-2);
+  border: 1px solid var(--cc-border); border-radius: var(--cc-r-sm); padding: var(--cc-s1) var(--cc-s2); min-height: 32px;
+}
+.chatchup .cc-field { display: flex; flex-direction: column; gap: 2px; }
+
+/* status pills and tags: color + icon + text */
+.chatchup .cc-pill { display: inline-flex; gap: var(--cc-s1); align-items: center; border-radius: var(--cc-r-pill); padding: 2px var(--cc-s3); font-size: var(--cc-xs); font-weight: 600; }
+.chatchup .cc-ok { background: var(--cc-ok-soft); color: var(--cc-ok); }
+.chatchup .cc-warning { background: var(--cc-warning-soft); color: var(--cc-warning); }
+.chatchup .cc-critical { background: var(--cc-critical-soft); color: var(--cc-critical); }
+.chatchup .cc-info { background: var(--cc-info-soft); color: var(--cc-info); }
+.chatchup .cc-neutral { background: var(--cc-neutral-soft); color: var(--cc-neutral); }
+.chatchup .cc-accent { background: var(--cc-accent-soft); color: var(--cc-accent-strong); }
+.chatchup .cc-tag { font-size: var(--cc-xs); font-weight: 600; border-radius: var(--cc-r-pill); padding: 0 var(--cc-s2); }
+.chatchup .cc-int { background: var(--cc-info-soft); color: var(--cc-info); }
+.chatchup .cc-ext { background: var(--cc-accent-soft); color: var(--cc-accent-strong); }
+.chatchup .cc-ai-tag { background: var(--cc-primary-soft); color: var(--cc-primary); }
+
+/* layout */
+.chatchup .cc-toolbar { display: flex; gap: var(--cc-s3); align-items: flex-end; flex-wrap: wrap; }
+.chatchup .cc-panel { background: var(--cc-surface); border: 1px solid var(--cc-border); border-radius: var(--cc-r-lg); box-shadow: var(--cc-shadow-1); padding: var(--cc-s4); }
+.chatchup .cc-panel-head { display: flex; justify-content: space-between; align-items: baseline; }
+.chatchup .cc-panel-toolbar { display: flex; gap: var(--cc-s3); align-items: center; flex-wrap: wrap; padding-bottom: var(--cc-s3); border-bottom: 1px solid var(--cc-border); }
+.chatchup .cc-workspace { display: flex; flex-direction: column; gap: var(--cc-s4); }
+.chatchup .cc-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--cc-s4); }
+.chatchup .cc-kpi-value { font-size: var(--cc-xl); font-weight: 600; font-variant-numeric: tabular-nums; }
+.chatchup .cc-network { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--cc-s4); }
+.chatchup .cc-graph-panel { display: flex; flex-direction: column; min-height: 560px; }
+.chatchup .cc-graph-wrap { position: relative; flex: 1; }
+.chatchup .cc-graph { position: absolute; inset: 0 0 32px 0; }
+.chatchup .cc-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--cc-muted); }
+.chatchup .cc-legend { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: var(--cc-s3); flex-wrap: wrap; font-size: var(--cc-xs); color: var(--cc-muted); }
+.chatchup .cc-legend span { display: inline-flex; align-items: center; gap: var(--cc-s1); }
+.chatchup .cc-swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.chatchup .cc-sw-int { background: var(--cc-c1); }
+.chatchup .cc-sw-ext { background: var(--cc-c3); }
+.chatchup .cc-sw-hub { border: 3px solid var(--cc-accent); }
+.chatchup .cc-sw-sus { background: var(--cc-critical); }
+.chatchup .cc-line { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+.chatchup .cc-l-tcp { background: var(--cc-c1); }
+.chatchup .cc-l-udp { background: var(--cc-c2); }
+.chatchup .cc-l-icmp { background: var(--cc-c5); }
+.chatchup .cc-l-mixed { background: var(--cc-c4); }
+.chatchup .cc-segmented { display: inline-flex; background: var(--cc-surface-2); border-radius: var(--cc-r-md); padding: 2px; }
+.chatchup .cc-segmented button { border: 0; background: none; color: var(--cc-muted); font: 600 var(--cc-sm) var(--cc-font); padding: var(--cc-s1) var(--cc-s3); border-radius: var(--cc-r-sm); cursor: pointer; }
+.chatchup .cc-segmented .cc-active { background: var(--cc-surface); color: var(--cc-text); box-shadow: var(--cc-shadow-1); }
+
+/* inspector */
+.chatchup .cc-inspector { max-height: 620px; overflow: auto; }
+.chatchup .cc-section { padding: var(--cc-s3) 0; border-bottom: 1px solid var(--cc-border); }
+.chatchup .cc-section:last-child { border-bottom: 0; }
+.chatchup .cc-note { background: var(--cc-info-soft); color: var(--cc-info); border-radius: var(--cc-r-sm); padding: var(--cc-s2); font-size: var(--cc-xs); }
+.chatchup .cc-findings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--cc-s3); }
+.chatchup .cc-bars { display: flex; flex-direction: column; gap: var(--cc-s1); }
+.chatchup .cc-bar-row { display: grid; grid-template-columns: 56px 1fr 52px; gap: var(--cc-s2); align-items: center; font-size: var(--cc-sm); }
+.chatchup .cc-bar-track { height: 8px; background: var(--cc-surface-2); border-radius: var(--cc-r-pill); overflow: hidden; }
+.chatchup .cc-bar-fill { height: 100%; background: var(--cc-c1); }
+.chatchup .cc-mini { width: 100%; border-collapse: collapse; font-size: var(--cc-sm); }
+.chatchup .cc-mini td { padding: var(--cc-s1) var(--cc-s1); border-bottom: 1px solid var(--cc-border); }
+.chatchup .cc-click { cursor: pointer; }
+.chatchup .cc-click:hover { background: var(--cc-surface-2); }
+.chatchup .cc-host-title { font-size: var(--cc-md); font-weight: 600; margin: var(--cc-s2) 0; }
+.chatchup .cc-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cc-s3); margin-bottom: var(--cc-s2); }
+.chatchup .cc-stat-value { font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.chatchup .cc-pair { display: flex; flex-direction: column; align-items: flex-start; gap: var(--cc-s1); }
+.chatchup .cc-ai input { flex: 1; }
+.chatchup .cc-ai-out { background: var(--cc-surface-2); border-radius: var(--cc-r-md); padding: var(--cc-s3); }
+.chatchup .cc-ai-text { white-space: pre-wrap; margin-bottom: var(--cc-s1); }
+
+/* start screen */
+.chatchup .cc-dropzone {
+  border: 2px dashed var(--cc-border); border-radius: var(--cc-r-lg); background: var(--cc-surface);
+  padding: var(--cc-s6); text-align: center; cursor: pointer; transition: border-color 150ms ease-out;
+}
+.chatchup .cc-dropzone.cc-over, .chatchup .cc-dropzone:hover { border-color: var(--cc-accent); }
+
+/* timeline */
+.chatchup .cc-timeline svg { width: 100%; height: 112px; display: block; }
+.chatchup .cc-bar { fill: var(--cc-c1); }
+.chatchup .cc-gridline { stroke: var(--cc-border); }
+.chatchup .cc-axis { fill: var(--cc-muted); font: var(--cc-xs) var(--cc-font); }
+.chatchup .cc-window { fill: var(--cc-primary); fill-opacity: 0.12; stroke: var(--cc-primary); }
+.chatchup .cc-window-track { position: relative; height: 24px; margin-left: 44px; }
+.chatchup .cc-window-track input { position: absolute; inset: 0; width: 100%; pointer-events: none; background: none; appearance: none; }
+.chatchup .cc-window-track input::-webkit-slider-thumb { pointer-events: auto; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--cc-primary); cursor: ew-resize; }
+.chatchup .cc-window-track input::-moz-range-thumb { pointer-events: auto; width: 14px; height: 14px; border-radius: 50%; background: var(--cc-primary); cursor: ew-resize; border: 0; }
+.chatchup .cc-window-labels { display: flex; justify-content: space-between; align-items: center; margin-left: 44px; font-size: var(--cc-xs); color: var(--cc-muted); font-variant-numeric: tabular-nums; }
+
+/* toast (sonner replaces this in the React port) */
+.chatchup .cc-toast { position: fixed; bottom: var(--cc-s6); right: var(--cc-s6); background: var(--cc-text); color: var(--cc-surface); padding: var(--cc-s3) var(--cc-s4); border-radius: var(--cc-r-md); box-shadow: var(--cc-shadow-2); max-width: 420px; z-index: 10; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chatchup * { transition: none !important; }
+}
+@media (max-width: 1280px) {
+  .chatchup .cc-network { grid-template-columns: 1fr; }
+  .chatchup .cc-kpis { grid-template-columns: repeat(3, 1fr); }
+}

@@ -100,13 +100,42 @@ same data store and the same local LLM service.
   inventory table view, change history.
 
 ### 2.6 Chatchup: packet capture (PCAP) investigation
-> **OPEN QUESTION:** the name. We read "pickup files" as **packet capture files (.pcap / .pcapng)**. Confirm, and confirm the final module name.
+> **DECIDED:** Chatchup = **packet capture files (.pcap / .pcapng)**. Code lives in `api/app/modules/pcap/`.
 - **Goal:** Upload a capture file and investigate what happened in it.
 - **Flow:** upload a .pcap/.pcapng → the backend parses it (tshark / Zeek) into conversations,
   protocols, DNS/HTTP/TLS metadata, retransmissions, resets, latency → the AI summarizes the
   capture and answers questions about it in a chat scoped to that file.
 - **Must have:** size limit and background processing for big files, protocol breakdown,
   conversation list, flagged anomalies, "follow stream" view, link findings into an Investigation.
+- **Parser:** `dpkt` (pure Python; pcap + pcapng; Ethernet, raw IP, Linux SLL; IPv4 + IPv6). Flags port scans,
+  beacons (regular internal→external check-ins), TCP retransmissions, resets, slow/unanswered handshakes.
+  Every finding cites 1-based packet numbers (same as Wireshark).
+- **API (`/api/v1/pcap`):** `POST /captures` (multipart `file`, 202, `PCAP_MAX_UPLOAD_MB`) · `GET /captures` ·
+  `GET /captures/{id}` (meta + analysis, top 200 conversations by bytes) ·
+  `GET /captures/{id}/conversations?offset=&limit=` · `GET /captures/{id}/streams/{conv_id}` · `DELETE /captures/{id}` ·
+  `POST /captures/{id}/summary[?refresh=true]` · `GET|POST /captures/{id}/chat` (`{"question": "..."}`).
+  AI answers return `sources` = cited packet numbers; 503 when the local model is down. The LLM gets
+  metadata only (HTTP query strings are dropped, strings length-capped), in a data message, never in the
+  system role and never payload bytes. Memory is bounded (20k tracked flows, per-type anomaly caps with true
+  totals in `anomaly_counts`). Upload size is checked from `Content-Length` before parsing; nginx must enforce
+  `client_max_body_size` too.
+- **Interim, until the foundation lands:** results stored as JSON under `PCAP_DATA_DIR/<id>/`, analysis runs in
+  FastAPI `BackgroundTasks`; assumes `app.ai.llm_client.chat(messages) -> str` (async) and that `main.py` mounts
+  `app.modules.pcap.router.router` at `/api/v1/pcap`. Module deps: `api/requirements/pcap.txt`
+  (tests/lint: `pcap-dev.txt`). Tests: `python -m pytest api/tests/pcap`.
+- **Network views (graph tab):** `GET /captures/{id}/graph?protocol=&min_packets=&t_start=&t_end=` (hosts as
+  nodes, host pairs as edges, hubs, scan/beacon hosts flagged) · `GET /captures/{id}/overview?t_start=&t_end=`
+  (totals, protocol mix, top talkers/ports, findings) · `GET /captures/{id}/timeline` · `GET /captures/{id}/hosts/{ip}`.
+  `t_start`/`t_end` are seconds from the first packet; windows use per-conversation time bins stored next to the
+  analysis (1 s, coarsened automatically to stay under 200k bins), so no view re-reads the file.
+- **UI (TEMPORARY):** `web/src/features/pcap/legacy/` is the Chatchup tab in plain JS, adapted from the PCAP Lab
+  workshop UI (network graph + inspector + timeline with time window, plus findings and the AI assistant).
+  It mounts into the shell as one tab: load `chatchup.css` and `vendor/cytoscape-3.30.2.min.js` (MIT,
+  vendored, air-gap safe), then `mountChatchup(el, { apiBase: "/api/v1/pcap" })`; call `.reload()` after a theme
+  switch and `.destroy()` when leaving the tab. Everything is scoped under `.chatchup` and reads the 6A tokens
+  with fallbacks. **To do:** port to React + shared components once the shell exists (rule 6), then delete `legacy/`.
+- **Later:** move storage to the DB and processing to the shared worker; link findings into an Investigation;
+  per-user access once auth exists; packet list + hex view (the workshop has one).
 
 ---
 
@@ -508,7 +537,7 @@ and a one-line entry in the decision log below.
 
 ## 11. Open questions
 
-1. Confirm feature 6: is "pickup files" = **PCAP** files? Final name for the module?
+1. ~~Confirm feature 6: is "pickup files" = **PCAP** files?~~ Resolved: yes, module `pcap`, product name Chatchup.
 2. Target hardware: is there a GPU? That decides the model size and Ollama vs vLLM.
 3. Expected scale: number of devices, syslog messages per second, PCAP sizes.
 4. Which hypervisors / container platforms must the Mapper support?
@@ -533,6 +562,7 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | `web` (nginx) serves the UI and proxies `/api`, so it also plays the `proxy` role for now. Backend containers sit on an `internal` Docker network with no way out | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |
 | 2026-11-25 | Syslog server and SNMP server are separate Docker deployments on their own vSphere VMs, forwarding to Monicomm over mTLS; device credentials and config writes live only on the SNMP server | PROPOSED |
+| 2026-11-25 | Chatchup = PCAP module; parser is `dpkt` (pure Python), tshark/Zeek only if deeper dissection is needed | DECIDED |
 
 ---
 
