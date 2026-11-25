@@ -19,7 +19,7 @@ body {
 
 .shell {
   display: grid;
-  grid-template-columns: var(--nav-width) 1fr;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -29,7 +29,7 @@ body {
   gap: var(--space-1);
   padding: var(--space-4) var(--space-3);
   background: var(--surface);
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
 }
 
 .nav__brand {
@@ -45,7 +45,7 @@ body {
   padding: var(--space-2) var(--space-3);
   font: inherit;
   color: var(--text);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   background: none;
   border: 0;
@@ -83,6 +83,11 @@ body {
   font-weight: var(--weight-semibold);
 }
 
+.topbar__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -94,6 +99,18 @@ body {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+}
+
+.button--primary {
+  font-weight: var(--weight-semibold);
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .content {
@@ -141,6 +158,11 @@ body {
 .status-pill--neutral {
   color: var(--neutral-strong);
   background: var(--neutral-soft);
+}
+
+.status-pill--accent {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {

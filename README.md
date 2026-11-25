@@ -28,6 +28,9 @@ cd api; uv sync; cd ..\web; npm ci; cd ..
 ```
 The first command turns on the required pre-push hook: every `git push` runs the tests and is cancelled if they fail.
 
+To see the dashboard without a network, set `MONICOMM_ENV=dev` and `MONICOMM_DEMO_DATA=true` in `.env` and run the API with
+`uv run --env-file ../.env uvicorn app.main:app --reload`. The data is fabricated and labelled DEMO.
+
 ## Before you push
 
 ```powershell

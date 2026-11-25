@@ -41,6 +41,9 @@ same data store and the same local LLM service.
   runs write or config actions on network devices; keeps per-user conversation history.
 - **Later:** suggested next steps, hand-off to Incident Investigator ("open an investigation from this chat").
 
+- **API:** `POST /api/v1/chat` `{messages: [{role, content}]}` (alternating, ends with the question) → `{source, reply, model, context}`.
+  The server attaches a size-limited snapshot of dashboard data; there are no tools and the browser keeps the history.
+
 ### 2.2 Dashboard: network overview
 - **Goal:** One screen that shows the health of the network at a glance.
 - **Shows:** device up/down status, interface utilization and errors, top talkers, alert
@@ -48,6 +51,12 @@ same data store and the same local LLM service.
 - **AI part:** a short, auto-generated "network summary" (what's abnormal right now) and
   anomaly markers on charts.
 - **Must have:** auto-refresh, time-range picker, drill-down from any widget into Analyzer / Investigator / Mapper.
+
+- **API (`/api/v1/dashboard`):** `GET /summary` · `GET /devices?q=&status=&type=&vendor=` · `GET /devices/{id}` ·
+  `GET /events?q=&severity=&kind=`. Every response has `source` (`demo` or `live`). 503 `no_data_source` when none is connected.
+- **Current state:** Overview, Devices, Device details and Events views in `web/src/features/dashboard/`. The only source is
+  fabricated demo data (`MONICOMM_DEMO_DATA=true` with `MONICOMM_ENV=dev`), labelled DEMO. A real source implements `DataSource`
+  in `api/app/modules/dashboard/models.py`.
 
 ### 2.3 Analyzer: SNMP, logs and syslog analysis
 - **Goal:** Continuously process what flows in and turn raw data into findings.
@@ -533,6 +542,8 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | `web` (nginx) serves the UI and proxies `/api`, so it also plays the `proxy` role for now. Backend containers sit on an `internal` Docker network with no way out | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |
 | 2026-11-25 | Syslog server and SNMP server are separate Docker deployments on their own vSphere VMs, forwarding to Monicomm over mTLS; device credentials and config writes live only on the SNMP server | PROPOSED |
+| 2026-11-25 | Dev-only exception to C1: `MONICOMM_LLM_PROVIDER=gemini` (Google AI Studio) for local development without a GPU. Works only with `MONICOMM_ENV=dev`, key only in the local `.env`, the Docker api can't reach it (internal network); ChatIAF sends it demo data only; default stays `ollama` | PROPOSED (needs team approval) |
+| 2026-11-25 | Dashboard and ChatIAF text in Hebrew (RTL) by default with an English toggle; module names stay in English | PROPOSED (conflicts with the English-first decision on branch `chat-iaf`) |
 
 ---
 

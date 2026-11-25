@@ -1,6 +1,6 @@
-import { CircleAlert, CircleCheck, CircleHelp, Info, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDot, CircleHelp, Info, TriangleAlert } from "lucide-react";
 
-export type Status = "ok" | "warning" | "critical" | "info" | "neutral";
+export type Status = "ok" | "warning" | "critical" | "info" | "neutral" | "accent";
 
 const ICONS = {
   ok: CircleCheck,
@@ -8,6 +8,7 @@ const ICONS = {
   critical: CircleAlert,
   info: Info,
   neutral: CircleHelp,
+  accent: CircleDot,
 } as const;
 
 // Status is always color + icon + text (PROJECT.md section 6A), never color alone.
