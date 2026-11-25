@@ -17,7 +17,7 @@ export interface CheckResult {
   error: "key_missing" | "key_rejected" | "model_not_found" | "rate_limited" | "unavailable" | null;
 }
 
-type ErrorCode = "key_missing" | "external_url" | "invalid" | "access" | "failed";
+type ErrorCode = "key_missing" | "external_url" | "invalid" | "access" | "dev_only" | "failed";
 
 export class AdminError extends Error {
   constructor(readonly code: ErrorCode) {
@@ -26,6 +26,7 @@ export class AdminError extends Error {
 }
 
 function codeOf(status: number, detail: unknown): ErrorCode {
+  if (detail === "dev_only") return detail;
   if (status === 401 || status === 403) return "access";
   if (status === 422) return "invalid";
   if (detail === "key_missing" || detail === "external_url") return detail;

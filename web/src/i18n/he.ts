@@ -159,6 +159,7 @@ export const he: Partial<Messages> = {
   "admin.error.unavailable": "לא ניתן להגיע למודל.",
   "admin.error.external_url": "הכתובת חייבת להיות בתוך הרשת הסגורה.",
   "admin.error.invalid": "אחד הערכים אינו תקין.",
+  "admin.error.dev_only": "ניתן לשנות כאן את חיבור ה-AI רק בסביבת פיתוח.",
   "admin.error.access": "יש להתחבר כמנהל כדי להשתמש בדף זה.",
   "admin.error.failed": "הבקשה נכשלה. נסו שוב.",
 };

@@ -251,6 +251,7 @@ export const en = {
   "admin.error.unavailable": "The model could not be reached.",
   "admin.error.external_url": "The address must be inside the closed network.",
   "admin.error.invalid": "One of the values is not valid.",
+  "admin.error.dev_only": "The AI connection can be changed here only in development.",
   "admin.error.access": "Sign in as an admin to use this page.",
   "admin.error.failed": "The request failed. Try again.",
 } as const;

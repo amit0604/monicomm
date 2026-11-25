@@ -34,6 +34,16 @@ def require_admin(request: Request) -> auth.User:
 AdminDep = Annotated[auth.User, Depends(require_admin)]
 
 
+def require_dev_admin(admin: AdminDep) -> auth.User:
+    """Outside dev the saved file is ignored, so never write a key there."""
+    if not llm_settings.enabled(get_settings()):
+        raise HTTPException(403, "dev_only")
+    return admin
+
+
+DevAdminDep = Annotated[auth.User, Depends(require_dev_admin)]
+
+
 class LLMForm(BaseModel):
     provider: Literal["ollama", "gemini"]
     base_url: str = Field(min_length=1, max_length=300)
@@ -118,12 +128,12 @@ router = APIRouter(prefix="/api/v1/admin/llm", tags=["admin"])
 
 
 @router.get("")
-def read(_admin: AdminDep) -> LLMView:
+def read(_admin: DevAdminDep) -> LLMView:
     return _view()
 
 
 @router.put("")
-def write(form: LLMForm, admin: AdminDep) -> LLMView:
+def write(form: LLMForm, admin: DevAdminDep) -> LLMView:
     settings, saved = _from_form(form)
     if form.provider == "gemini" and not llm_settings.merge(settings, saved).gemini_api_key:
         raise HTTPException(400, "key_missing")
@@ -137,14 +147,14 @@ def write(form: LLMForm, admin: AdminDep) -> LLMView:
 
 
 @router.delete("")
-def reset(admin: AdminDep) -> LLMView:
+def reset(admin: DevAdminDep) -> LLMView:
     llm_settings.reset(get_settings())
     log.info("admin: %s reset the model connection to .env", admin.name)
     return _view()
 
 
 @router.post("/test")
-async def check(form: LLMForm, _admin: AdminDep) -> CheckResult:
+async def check(form: LLMForm, _admin: DevAdminDep) -> CheckResult:
     """Send one fixed message to the model with these values, without saving them."""
     settings, saved = _from_form(form)
     merged = llm_settings.merge(settings, saved)
