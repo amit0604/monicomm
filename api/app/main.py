@@ -14,6 +14,7 @@ from app.modules.analyzer.router import router as analyzer_router
 from app.modules.chat.router import router as chat_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.investigator.router import router as investigator_router
+from app.modules.mapper.router import router as mapper_router
 from app.modules.pcap.router import router as pcap_router
 
 MODULES = [
@@ -71,6 +72,7 @@ app.include_router(chat_router)
 app.include_router(analyzer_router)
 app.include_router(admin_router)
 app.include_router(admin_users_router)
+app.include_router(mapper_router)
 
 
 @app.get("/api/v1/health")

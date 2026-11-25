@@ -11,6 +11,7 @@ import { AuthGate } from "./features/auth/AuthGate";
 import { ChatPage } from "./features/chat/ChatPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
+import { MapperPage } from "./features/mapper/MapperPage";
 import { useCriticalIncidentToasts } from "./features/investigator/useIncidents";
 import { CatchupTab } from "./features/pcap/CatchupTab";
 import { I18nProvider, useI18n } from "./i18n";
@@ -51,6 +52,8 @@ function Shell() {
         return <AnalyzerPage />;
       case "investigator":
         return <InvestigatorPage selectedId={incidentId} onSelect={setIncidentId} />;
+      case "mapper":
+        return <MapperPage theme={theme} />;
       case "pcap":
         return <CatchupTab theme={theme} />;
       default:
