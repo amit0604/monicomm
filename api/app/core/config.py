@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     llm_provider: str = "ollama"
     gemini_api_key: str = ""  # local .env only, never in git
     gemini_model: str = "gemini-2.5-flash"
+    llm_settings_file: str = ".env.llm.json"  # what the Admin page saved; dev login only
+    # "none", or "firebase" = dev-only Google login (env=dev)
+    auth_provider: str = "none"
+    firebase_api_key: str = ""
+    firebase_auth_domain: str = ""
+    firebase_project_id: str = ""
+    firebase_admin_login: str = "admin@monicomm.local"  # what the username "admin" means
+    admin_uids: str = ""  # comma-separated Firebase user ids
+    admin_emails_file: str = ".env.admins.json"  # more emails, from the Admin page
+    admin_emails: str = ""  # comma-separated, verified addresses only
     investigator_ingest_dir: str = ""  # empty = listener off
     investigator_data_dir: str = "/data/investigator"
     investigator_window_s: int = 120

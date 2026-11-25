@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
-import { PanelLeftClose, PanelLeftOpen, Radar } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Radar, Settings } from "lucide-react";
 import { useI18n } from "../../i18n";
-import type { ModuleId } from "../../modules";
+import { ADMIN_ENABLED, type PageId } from "../../modules";
 import { MODULE_LIST } from "./modules";
 
 export function SideNav({
@@ -10,9 +10,9 @@ export function SideNav({
   onNavigate,
   onToggle,
 }: {
-  active: ModuleId;
+  active: PageId;
   collapsed: boolean;
-  onNavigate: (id: ModuleId) => void;
+  onNavigate: (id: PageId) => void;
   onToggle: () => void;
 }) {
   const { t } = useI18n();
@@ -47,6 +47,26 @@ export function SideNav({
               </button>
             </li>
           ))}
+          {ADMIN_ENABLED && (
+            <li>
+              <button
+                type="button"
+                className={
+                  active === "admin" ? "sidenav__item sidenav__item--active" : "sidenav__item"
+                }
+                aria-current={active === "admin" ? "page" : undefined}
+                aria-label={collapsed ? t("nav.admin") : undefined}
+                title={collapsed ? t("nav.admin") : undefined}
+                onClick={() => onNavigate("admin")}
+                style={{ "--nav-accent": "var(--border)" } as CSSProperties}
+              >
+                <span className="sidenav__icon" aria-hidden="true">
+                  <Settings size={20} />
+                </span>
+                {!collapsed && t("nav.admin")}
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
 

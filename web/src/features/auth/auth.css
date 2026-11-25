@@ -1,0 +1,75 @@
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+}
+
+.login__panel {
+  display: grid;
+  gap: var(--space-4);
+  width: min(400px, 100%);
+  padding: var(--space-6);
+}
+
+.login__title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+
+.login__note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.login__error {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+  color: var(--critical-strong);
+  background: var(--critical-soft);
+  border-radius: var(--radius-sm);
+}
+
+.login__form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.login__form label {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.login__field {
+  width: 100%;
+  text-align: end; /* the fields are LTR, the page is RTL */
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.login__user {
+  position: fixed;
+  inset-block-end: var(--space-3);
+  inset-inline-start: var(--space-3);
+  z-index: 5;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  max-width: 220px;
+  padding: var(--space-2);
+  overflow-wrap: anywhere;
+  font-size: var(--text-xs);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}

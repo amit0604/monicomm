@@ -7,8 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from app.ai import llm_client
-from app.core.config import get_settings
+from app.ai import llm_client, llm_settings
 from app.modules.dashboard.models import DataSource, DeviceDetails, DeviceStatus
 from app.modules.dashboard.service import newest_first
 
@@ -167,7 +166,7 @@ def collect_context(source: DataSource) -> tuple[str, Context]:
 
 
 async def answer(source: DataSource, messages: list[Message]) -> ChatReply:
-    settings = get_settings()
+    settings = llm_settings.current()
     history = prepare_history(messages)
     if settings.llm_provider == "gemini" and source.source != "demo":
         raise ExternalModelRefused
