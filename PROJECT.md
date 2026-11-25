@@ -91,7 +91,8 @@ same data store and the same local LLM service.
 #### Live incident analyzer (built; plan: `plans/incident-analyzer/plan.md`)
 - **What:** listens to collector events (`collector/README.md`: `monicomm.syslog.v1`, `monicomm.trap.v1`,
   `monicomm.snmp_metric.v1`), opens incidents **only for abnormal events**, shows what they affect on the
-  network path and a probable root cause with evidence. **A normal network produces nothing:** no incident, no file, no log.
+  network path and a probable root cause with evidence. **A normal network produces nothing:** no incident, no event content on disk or in logs
+  (only the listener's read offsets). On first start it tails from now; it doesn't replay old files.
 - **Abnormal:** link/adjacency (BGP/OSPF/IS-IS)/VPN down (not admin-down or admin BGP resets), cluster failover,
   hardware/env alarms, STP root/topology changes, interface flapping (≥ 3 downs in the window), failed-login bursts
   (≥ 5 per device in 5 min). Up events only mark an open incident as recovered. Normal events stay in memory for the
@@ -551,7 +552,7 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | UI: pastel design system, Segoe UI font, Grafana + monday.com style, light and dark themes (section 6A) | DECIDED |
 | 2026-11-25 | Analyzer includes change impact analysis ("what if"): simulation only, never applied to devices (section 2.3) | DECIDED |
 | 2026-11-25 | Live incident analyzer reacts only to abnormal events; normal operation stores and shows nothing (section 2.4) | DECIDED |
-| 2026-11-25 | Dev-only exception to C1: `MONICOMM_LLM_PROVIDER=gemini` (Google AI Studio) for local development without a GPU. Works only with `MONICOMM_ENV=dev`, key only in the local `.env`, the Docker api can't reach it (internal network); default stays `ollama` | PROPOSED (needs team approval) |
+| 2026-11-25 | Dev-only exception to C1: `MONICOMM_LLM_PROVIDER=gemini` (Google AI Studio) for local development without a GPU. Works only with `MONICOMM_ENV=dev` set explicitly (default is `prod`), key only in the local `.env`, the Docker api can't reach it (internal network); default stays `ollama` | PROPOSED (needs team approval) |
 | 2026-11-25 | Shared test + CI pipeline: ruff/pytest, prettier/eslint/stylelint/vitest, air-gap check, Docker smoke test (section 7) | DECIDED |
 | 2026-11-25 | `web` (nginx) serves the UI and proxies `/api`, so it also plays the `proxy` role for now. Backend containers sit on an `internal` Docker network with no way out | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |

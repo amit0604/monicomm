@@ -53,8 +53,8 @@ async def analyze(incident: dict) -> dict:
     ]
     try:
         reply = await llm_client.chat(messages)
-    except llm_client.LLMUnavailable as e:
-        raise ModelUnavailable(str(e)) from e
+    except (llm_client.LLMUnavailable, llm_client.ExternalEndpointError) as e:
+        raise ModelUnavailable(str(e)) from e  # misconfigured counts as unavailable (503)
 
     data = _parse(reply)
     known = {ev.get("id") for ev in incident.get("timeline", [])}

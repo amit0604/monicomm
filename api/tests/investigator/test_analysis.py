@@ -66,3 +66,12 @@ def test_garbage_reply_becomes_summary(monkeypatch):
 def test_model_down_raises_model_unavailable(monkeypatch):
     with pytest.raises(analysis.ModelUnavailable):
         run(monkeypatch, llm_client.LLMUnavailable("down"))
+
+
+def test_misconfigured_model_is_unavailable(monkeypatch):
+    async def refuse(messages):
+        raise llm_client.ExternalEndpointError("public url")
+
+    monkeypatch.setattr(llm_client, "chat", refuse)
+    with pytest.raises(analysis.ModelUnavailable):
+        asyncio.run(analysis.analyze({"title": "t", "timeline": []}))

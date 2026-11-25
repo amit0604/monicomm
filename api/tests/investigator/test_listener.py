@@ -1,6 +1,8 @@
 import asyncio
 import json
 
+import pytest
+
 from app.modules.investigator.listener import Listener
 from app.modules.investigator.store import IncidentStore
 
@@ -51,10 +53,14 @@ def write(tmp_path, name, text, day=DAY):
         f.write(text)
 
 
-def make(tmp_path, corr=None):
+def make(tmp_path, corr=None, backfill=True):
     corr = corr or FakeCorrelator()
     listener = Listener(
-        tmp_path / "ingest", tmp_path / "data", corr, IncidentStore(tmp_path / "data")
+        tmp_path / "ingest",
+        tmp_path / "data",
+        corr,
+        IncidentStore(tmp_path / "data"),
+        backfill=backfill,
     )
     listener.start()
     return listener, corr
@@ -150,3 +156,56 @@ def test_run_survives_errors_and_cancels(tmp_path):
 
     asyncio.run(go())
     assert len(calls) >= 2
+
+
+# --- final review fixes --------------------------------------------------------
+
+
+def test_first_start_tails_from_now_without_backfill(tmp_path):
+    write(tmp_path, "syslog.jsonl", DOWN + "\n")  # history already on disk
+    listener, corr = make(tmp_path, backfill=False)
+    listener.poll_once()
+    assert corr.fed == []
+    write(tmp_path, "syslog.jsonl", UP + "\n")
+    listener.poll_once()
+    assert len(corr.fed) == 1
+
+
+def test_closed_incident_is_never_touched_again(tmp_path):
+    write(tmp_path, "syslog.jsonl", DOWN + "\n")
+    listener, corr = make(tmp_path)
+    listener.poll_once()
+    inc = listener.store.list()[0]
+    listener.store.save({**inc, "status": "closed", "resolution": "fixed"})
+    listener._save({**inc, "status": "open"})  # correlator still thinks it's open
+    assert listener.store.get(inc["id"])["status"] == "closed"
+    write(tmp_path, "syslog.jsonl", UP + "\n")
+    listener.poll_once()
+    assert any(i["status"] == "closed" for i in corr.loaded)  # synced so it can be dropped
+
+
+def test_cleared_note_stays_cleared(tmp_path):
+    write(tmp_path, "syslog.jsonl", DOWN + "\n")
+    listener, _ = make(tmp_path)
+    listener.poll_once()
+    inc = listener.store.list()[0]
+    listener.store.save({**inc, "notes": ""})
+    listener._save({**inc, "notes": "stale copy"})
+    assert listener.store.get(inc["id"])["notes"] == ""
+
+
+def test_failed_poll_is_retried(tmp_path):
+    write(tmp_path, "syslog.jsonl", DOWN + "\n")
+    listener, corr = make(tmp_path)
+    real_save = listener.store.save
+
+    def boom(incident):
+        raise OSError("disk full")
+
+    listener.store.save = boom
+    with pytest.raises(OSError):
+        listener.poll_once()
+    assert listener.offsets == {}
+    listener.store.save = real_save
+    listener.poll_once()
+    assert len(listener.store.list()) == 1

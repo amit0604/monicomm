@@ -163,3 +163,13 @@ def test_unknown_provider_is_unavailable(monkeypatch):
     with pytest.raises(llm_client.LLMUnavailable):
         asyncio.run(llm_client.chat([]))
     get_settings.cache_clear()
+
+
+def test_gemini_refused_when_env_not_set(monkeypatch):
+    monkeypatch.setenv("MONICOMM_LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("MONICOMM_GEMINI_API_KEY", "test-key")
+    monkeypatch.delenv("MONICOMM_ENV", raising=False)
+    get_settings.cache_clear()
+    with pytest.raises(ExternalEndpointError):
+        asyncio.run(llm_client.chat([]))
+    get_settings.cache_clear()

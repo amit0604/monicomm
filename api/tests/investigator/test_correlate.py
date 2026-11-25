@@ -267,3 +267,15 @@ def test_lineproto_down_without_admin_down_opens_after_hold():
         c3.feed(lineproto(i * 20 + 1))
     out = c3.flush(T0 + timedelta(seconds=60))
     assert not [i for i in out[0]["impact"] if "flapping" in i["what"]]
+
+
+def test_load_keeps_only_newest_max_open(monkeypatch):
+    monkeypatch.setattr(correlate, "MAX_OPEN", 2)
+    c = Correlator()
+    c.load(
+        [
+            {"id": f"{n:012x}", "status": "open", "updated_at": f"2026-11-25T10:00:0{n}Z"}
+            for n in range(4)
+        ]
+    )
+    assert sorted(c._open) == [f"{2:012x}", f"{3:012x}"]

@@ -84,6 +84,9 @@ class Correlator:
                 self._open.pop(inc.get("id"), None)
             else:
                 self._open[inc["id"]] = inc
+        if len(self._open) > MAX_OPEN:  # keep the newest by last event
+            keep = sorted(self._open.values(), key=lambda i: _dt(i["updated_at"]))[-MAX_OPEN:]
+            self._open = {i["id"]: i for i in keep}
 
     def feed(self, ev: NetEvent) -> list[dict]:
         self._recent.append(ev)
