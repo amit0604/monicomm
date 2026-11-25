@@ -1,8 +1,8 @@
-// Chatchup tab (temporary plain-JS version, adapted from the PCAP Lab workshop UI).
+// Catchup tab (temporary plain-JS version, adapted from the PCAP Lab workshop UI).
 // Embeds in the Monicomm shell as one tab:
-//   import { mountChatchup } from "./features/pcap/legacy/index.js";   // + chatchup.css, vendor/cytoscape
-//   const tab = mountChatchup(containerEl, { apiBase: "/api/v1/pcap" });  // tab.destroy() on leave
-// Everything is scoped under the container (.chatchup); no global ids, styles or listeners.
+//   import { mountCatchup } from "./features/pcap/legacy/index.js";   // + catchup.css, vendor/cytoscape
+//   const tab = mountCatchup(containerEl, { apiBase: "/api/v1/pcap" });  // tab.destroy() on leave
+// Everything is scoped under the container (.catchup); no global ids, styles or listeners.
 // To be ported to React (web/src/features/pcap/) once the shell and shared components exist.
 import { createApi } from "./api.js";
 import { createGraph } from "./graph.js";
@@ -69,7 +69,7 @@ const TEMPLATE = `
 </div>
 <div class="cc-toast" data-ref="toast" role="status" hidden></div>`;
 
-export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
+export function mountCatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
   // After destroy() a late API reply must not touch the removed DOM: replies then never settle,
   // so no continuation (render, toast, polling) runs.
   let alive = true;
@@ -84,7 +84,7 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
         ),
     ]),
   );
-  root.classList.add("chatchup");
+  root.classList.add("catchup");
   root.innerHTML = TEMPLATE; // static markup only; capture data always goes in via textContent
   const $ = (ref) => root.querySelector(`[data-ref="${ref}"]`);
   const state = {
@@ -371,7 +371,7 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
       resize.disconnect();
       graph.destroy();
       root.replaceChildren();
-      root.classList.remove("chatchup");
+      root.classList.remove("catchup");
     },
   };
 }

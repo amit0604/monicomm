@@ -21,7 +21,7 @@ Open http://localhost:8080. Add the local LLM with `docker compose --profile llm
 | Analyzer | Not started | |
 | Incident Investigator | Built: live incident analyzer | `api/app/modules/investigator/`, `web/src/features/investigator/` |
 | Mapper | Not started | |
-| Chatchup (PCAP) | Built | `api/app/modules/pcap/`, `web/src/features/pcap/` |
+| Catchup (PCAP) | Built | `api/app/modules/pcap/`, `web/src/features/pcap/` |
 
 The collectors (syslog and SNMP servers) are separate deployments in `collector/`, each with its own README.
 

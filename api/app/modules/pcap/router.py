@@ -1,4 +1,4 @@
-"""Chatchup REST API. Mounted by the app under /api/v1/pcap (plan assumption A2)."""
+"""Catchup REST API. Mounted by the app under /api/v1/pcap (plan assumption A2)."""
 
 import ipaddress
 from typing import Literal

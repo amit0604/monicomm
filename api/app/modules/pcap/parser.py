@@ -1,4 +1,4 @@
-"""Chatchup PCAP parser: turns a .pcap/.pcapng file into a compact, JSON-safe analysis.
+"""Catchup PCAP parser: turns a .pcap/.pcapng file into a compact, JSON-safe analysis.
 
 Pure Python (dpkt), streaming, one pass. Packet numbers are 1-based, like Wireshark,
 so every finding can cite the packets it came from (PROJECT.md AI rule 4).

@@ -5,7 +5,7 @@ export const MODULES = [
   { id: "analyzer", name: "Analyzer" },
   { id: "investigator", name: "Incident Investigator" },
   { id: "mapper", name: "Mapper" },
-  { id: "pcap", name: "Chatchup" },
+  { id: "pcap", name: "Catchup" },
 ] as const;
 
 export type ModuleId = (typeof MODULES)[number]["id"];

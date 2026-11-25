@@ -16,7 +16,7 @@ vi.mock("cytoscape", () => ({
   })),
 }));
 
-describe("Chatchup tab", () => {
+describe("Catchup tab", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
@@ -34,7 +34,7 @@ describe("Chatchup tab", () => {
 
   it("mounts inside the shell and lists captures from the pcap API", async () => {
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Chatchup" }));
+    fireEvent.click(screen.getByRole("button", { name: "Catchup" }));
 
     expect(screen.getByRole("button", { name: "Upload capture" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /drop a \.pcap/i })).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe("Chatchup tab", () => {
 
   it("cleans up when leaving the tab", () => {
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Chatchup" }));
+    fireEvent.click(screen.getByRole("button", { name: "Catchup" }));
     fireEvent.click(screen.getByRole("button", { name: "Mapper" }));
 
     expect(cy.destroy).toHaveBeenCalled();
