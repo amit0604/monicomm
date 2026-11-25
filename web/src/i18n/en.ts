@@ -6,7 +6,7 @@ export const en = {
   "nav.analyzer": "Analyzer",
   "nav.investigator": "Incident Investigator",
   "nav.mapper": "Mapper",
-  "nav.pcap": "Chatchup",
+  "nav.pcap": "Catchup",
   "nav.collapse": "Collapse navigation",
   "nav.expand": "Expand navigation",
   "topbar.timeRange": "Time range",

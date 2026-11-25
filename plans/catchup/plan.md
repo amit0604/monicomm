@@ -1,4 +1,4 @@
-# Chatchup (PCAP investigation): build plan
+# Catchup (PCAP investigation): build plan
 
 - Date: 2026-11-25
 - Branch: `catchup`
@@ -62,7 +62,7 @@ Verification
 Decided with the user: workshop UI (graph + inspector + timeline/time window) now, as a tab inside the site.
 - [x] Parser: per-conversation time bins (adaptive), direction counts, scan/beacon hosts
 - [x] `network.py` + endpoints: graph, overview, timeline, hosts/{ip}
-- [x] `web/src/features/pcap/legacy/`: `mountChatchup(el)`, scoped CSS on 6A tokens, Cytoscape 3.30.2 vendored
+- [x] `web/src/features/pcap/legacy/`: `mountCatchup(el)`, scoped CSS on 6A tokens, Cytoscape 3.30.2 vendored
 - [x] Findings + AI assistant in the inspector
 
 Verification
@@ -75,7 +75,7 @@ Verification
 - [ ] `vitest` passes; screenshots light + dark; delete `legacy/`
 
 ## Phase 5: Docs + PR (status: IN PROGRESS)
-- [x] PROJECT.md: resolve open question 1 (Chatchup = PCAP), record A1–A3 contract, decision log row for dpkt
+- [x] PROJECT.md: resolve open question 1 (Catchup = PCAP), record A1–A3 contract, decision log row for dpkt
 - [ ] Adversarial review, then PR to `main`
 
 ## Out of scope (v1)

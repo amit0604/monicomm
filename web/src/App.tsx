@@ -8,7 +8,7 @@ import { ChatPage } from "./features/chat/ChatPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
 import { useCriticalIncidentToasts } from "./features/investigator/useIncidents";
-import { ChatchupTab } from "./features/pcap/ChatchupTab";
+import { CatchupTab } from "./features/pcap/CatchupTab";
 import { I18nProvider, useI18n } from "./i18n";
 import { useTheme } from "./lib/theme";
 import { useHashRoute } from "./lib/useHashRoute";
@@ -38,7 +38,7 @@ function Shell() {
       case "investigator":
         return <InvestigatorPage selectedId={incidentId} onSelect={setIncidentId} />;
       case "pcap":
-        return <ChatchupTab theme={theme} />;
+        return <CatchupTab theme={theme} />;
       default:
         return (
           <EmptyState

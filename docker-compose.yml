@@ -27,7 +27,7 @@ services:
       queue:
         condition: service_healthy
     volumes:
-      - pcap-data:/data/pcap   # Chatchup captures + analyses (MONICOMM_PCAP_DATA_DIR)
+      - pcap-data:/data/pcap   # Catchup captures + analyses (MONICOMM_PCAP_DATA_DIR)
       - investigator-data:/data/investigator
       # Incident Investigator input: the collectors' dev-ingest directory, read-only.
       # Uncomment and set MONICOMM_INVESTIGATOR_INGEST_DIR=/ingest in .env:

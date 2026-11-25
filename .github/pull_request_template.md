@@ -2,7 +2,7 @@
 
 <!-- One or two sentences. Link the issue if there is one. -->
 
-**Module:** Dashboard / Chat AI / Analyzer / Investigator / Mapper / Chatchup / Platform / Docs
+**Module:** Dashboard / Chat AI / Analyzer / Investigator / Mapper / Catchup / Platform / Docs
 
 ## Definition of done (PROJECT.md section 7)
 

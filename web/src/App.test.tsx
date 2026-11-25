@@ -30,7 +30,7 @@ describe("App shell", () => {
       "Analyzer",
       "Incident Investigator",
       "Mapper",
-      "Chatchup",
+      "Catchup",
     ]);
   });
 

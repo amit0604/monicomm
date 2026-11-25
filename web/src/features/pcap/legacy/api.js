@@ -1,4 +1,4 @@
-// Thin wrappers around the Chatchup API (/api/v1/pcap, see PROJECT.md 2.6).
+// Thin wrappers around the Catchup API (/api/v1/pcap, see PROJECT.md 2.6).
 
 export function createApi(base) {
   async function request(path, options = {}) {
