@@ -112,6 +112,10 @@ same data store and the same local LLM service.
 
 ## 3. Architecture (PROPOSED)
 
+> **Diagrams:** open [`docs/architecture.html`](docs/architecture.html) in a browser (works offline). It shows the
+> deployment and data flow, a Chat AI request end to end, the tech stack with build status, and the delivery
+> pipeline. When the architecture or stack changes, update that page in the same PR.
+
 ```
   Network devices ──► syslog server VM  (own deployment)  ─┐  mTLS
   (mgmt network)  ◄─► SNMP server VM    (own deployment)  ─┤  (events, metrics; configurator API)

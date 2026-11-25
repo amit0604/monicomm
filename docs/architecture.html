@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Open this file in a browser. Self-contained: no internet needed. -->
+<title>Monicomm Architecture</title>
+<style>
+  /* Layout: single reading column, wide figures scroll inside their own frame. Tokens follow PROJECT.md section 6A. */
+  :root {
+    --font-sans: "Segoe UI", "Segoe UI Variable Text", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+    --bg: #f6f7fb; --surface: #ffffff; --surface-2: #f0f2f8; --border: #e3e6ef;
+    --text: #1f2433; --muted: #6b7185; --primary: #5b4fd6; --primary-soft: #eceaff;
+    --ok-soft: #d9f5e7; --ok: #1b7a50; --warn-soft: #fff1c7; --warn: #8a5a00;
+    --info-soft: #dceeff; --info: #2563a8; --accent-soft: #ffe6d6; --accent: #9c4517;
+    --a-chat: #c3b8ff; --a-dash: #9db4ff; --a-analyzer: #8fe0c4; --a-inv: #ffa3ae; --a-map: #8fd3f5; --a-pcap: #ffc29e;
+    --node: #ffffff; --zone: #f0f2f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161f; --surface: #1c1f2b; --surface-2: #252938; --border: #2f3446;
+      --text: #e8eaf2; --muted: #9aa0b4; --primary: #8e85f5; --primary-soft: rgba(142,133,245,.18);
+      --ok-soft: rgba(27,122,80,.22); --ok: #6fd4a4; --warn-soft: rgba(138,90,0,.25); --warn: #f0c45a;
+      --info-soft: rgba(37,99,168,.25); --info: #82b8f5; --accent-soft: rgba(156,69,23,.25); --accent: #ffb07f;
+      --node: #1c1f2b; --zone: #191b26; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161f; --surface: #1c1f2b; --surface-2: #252938; --border: #2f3446;
+    --text: #e8eaf2; --muted: #9aa0b4; --primary: #8e85f5; --primary-soft: rgba(142,133,245,.18);
+    --ok-soft: rgba(27,122,80,.22); --ok: #6fd4a4; --warn-soft: rgba(138,90,0,.25); --warn: #f0c45a;
+    --info-soft: rgba(37,99,168,.25); --info: #82b8f5; --accent-soft: rgba(156,69,23,.25); --accent: #ffb07f;
+    --node: #1c1f2b; --zone: #191b26; color-scheme: dark;
+  }
+
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 15px; line-height: 1.55; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 48px; }
+  header { display: grid; gap: 8px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--primary); }
+  h1 { margin: 0; font-size: 32px; line-height: 1.2; font-weight: 600; text-wrap: balance; }
+  h2 { margin: 0; font-size: 22px; font-weight: 600; text-wrap: balance; }
+  h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  p { margin: 0; max-width: 68ch; }
+  .lede { color: var(--muted); font-size: 16px; }
+  section { display: grid; gap: 16px; min-width: 0; }
+  code, .mono { font-family: var(--font-mono); font-size: 13px; }
+
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .scroll { overflow-x: auto; padding: 16px; }
+  .scroll svg { display: block; width: 100%; min-width: 780px; height: auto; color: var(--text); }
+  figcaption { padding: 12px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+
+  /* SVG parts (styled from the page so both themes work) */
+  .zone { fill: var(--zone); stroke: var(--border); stroke-width: 1.5; stroke-dasharray: 6 5; }
+  .zone-air { fill: var(--primary-soft); fill-opacity: .35; stroke: var(--primary); stroke-width: 2; stroke-dasharray: 7 5; }
+  .zl { font-size: 12px; font-weight: 600; fill: var(--muted); }
+  .zl-air { font-size: 12px; font-weight: 600; fill: var(--primary); }
+  .node { fill: var(--node); stroke: var(--border); stroke-width: 1.5; }
+  .nt { font-size: 13px; font-weight: 600; fill: currentColor; }
+  .ns { font-size: 11px; fill: var(--muted); }
+  .ni { font-size: 11.5px; fill: currentColor; }
+  .edge { fill: none; stroke: currentColor; stroke-width: 1.5; }
+  .edge-sec { fill: none; stroke: var(--primary); stroke-width: 1.8; }
+  .edge-write { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-dasharray: 5 4; }
+  .el { font-size: 11px; fill: var(--muted); }
+  .el-sec { font-size: 11px; font-weight: 600; fill: var(--primary); }
+  .el-write { font-size: 11px; font-weight: 600; fill: var(--accent); }
+  .life { stroke: var(--border); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .stripe-chat { fill: var(--a-chat); } .stripe-dash { fill: var(--a-dash); } .stripe-an { fill: var(--a-analyzer); }
+  .stripe-inv { fill: var(--a-inv); } .stripe-map { fill: var(--a-map); } .stripe-pcap { fill: var(--a-pcap); }
+
+  /* Legend under the architecture figure */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 12px 16px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .sw { width: 26px; height: 0; border-top: 2px solid var(--text); }
+  .sw.sec { border-color: var(--primary); }
+  .sw.write { border-top: 2px dashed var(--accent); }
+
+  /* Stack table */
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+  tr.group td { background: var(--surface-2); font-weight: 600; font-size: 13px; padding-block: 7px; }
+  td.v { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 1px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.built { background: var(--ok-soft); color: var(--ok); }
+  .pill.decided { background: var(--info-soft); color: var(--info); }
+  .pill.proposed { background: var(--warn-soft); color: var(--warn); }
+
+  /* Modules */
+  .modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .mod { display: grid; grid-template-columns: 6px 1fr; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .mod > div:last-child { padding: 14px 16px; display: grid; gap: 6px; min-width: 0; }
+  .mod p { font-size: 13.5px; color: var(--muted); }
+  .mod .reads { font-size: 12.5px; }
+  .mod .reads b { font-weight: 600; color: var(--text); }
+
+  /* Pipeline */
+  .pipe { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; counter-reset: s; }
+  .pipe li { counter-increment: s; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .pipe li::before { content: "Step " counter(s); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); }
+  .pipe p { font-size: 13px; color: var(--muted); }
+  .pipe .gate { font-size: 12px; font-weight: 600; color: var(--accent); }
+
+  .note { background: var(--accent-soft); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; }
+  .note h3 { color: var(--accent); }
+  .note p { font-size: 14px; }
+  @media (max-width: 520px) { h1 { font-size: 26px; } .wrap { gap: 36px; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Monicomm · how it's built</div>
+    <h1>Tech stack and app flow</h1>
+    <p class="lede">Three Docker deployments on a closed network. Collectors touch the devices. Monicomm holds the data, the UI and the local AI, with no route to the internet or to the devices. Snapshot of <code>main</code> on 25 Nov 2026.</p>
+  </header>
+
+  <!-- 1. Architecture -->
+  <section>
+    <h2>Where data flows</h2>
+    <p>Device data enters through the two collector servers, crosses into Monicomm over mutual TLS and ends up in Postgres. The technician only ever talks to <code>web</code>. The one path back toward the devices is the configurator call, and it carries human-approved changes only.</p>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 600" role="img" aria-label="Network devices send syslog and traps to the syslog and SNMP servers on the management network. Those forward events over mTLS 6000 to Monicomm's ingest, then queue, worker and database. The technician's browser reaches web, which proxies to api. api reads the database and calls the local LLM. api sends approved changes to the SNMP server's configurator over mTLS 8443.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
+            <marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--primary)"/></marker>
+            <marker id="ahw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker>
+          </defs>
+
+          <!-- zones -->
+          <rect class="zone" x="12" y="36" width="530" height="446" rx="14"/>
+          <text class="zl" x="28" y="60">Management network · the only place with a route to devices</text>
+          <rect class="zone-air" x="596" y="36" width="392" height="552" rx="14"/>
+          <text class="zl-air" x="612" y="60">Monicomm host · internal Docker network</text>
+          <text class="zl-air" x="612" y="576">No internet · no route to devices · no device credentials</text>
+
+          <!-- devices -->
+          <rect class="node" x="30" y="212" width="130" height="124" rx="10"/>
+          <text class="nt" x="95" y="244" text-anchor="middle">Network devices</text>
+          <text class="ni" x="95" y="266" text-anchor="middle">Cisco · Juniper</text>
+          <text class="ns" x="95" y="286" text-anchor="middle">switches, routers,</text>
+          <text class="ns" x="95" y="302" text-anchor="middle">firewalls</text>
+
+          <!-- syslog server -->
+          <rect class="node" x="290" y="80" width="230" height="130" rx="10"/>
+          <text class="nt" x="306" y="104">Syslog server</text>
+          <text class="ns" x="306" y="122">own VM · own compose</text>
+          <text class="ni" x="306" y="148">Vector: receive + parse</text>
+          <text class="ni" x="306" y="168">raw archive, 1 year</text>
+          <text class="ni" x="306" y="188">disk buffer, then ship</text>
+
+          <!-- snmp server -->
+          <rect class="node" x="290" y="262" width="230" height="200" rx="10"/>
+          <text class="nt" x="306" y="286">SNMP server</text>
+          <text class="ns" x="306" y="304">own VM · holds device credentials</text>
+          <text class="ni" x="306" y="330">snmptrapd: traps, informs</text>
+          <text class="ni" x="306" y="350">Telegraf: SNMPv3 polling</text>
+          <text class="ni" x="306" y="370">Vector shipper + buffer</text>
+          <text class="ni" x="306" y="390">discovery for Mapper</text>
+          <text class="ni" x="306" y="418" style="fill: var(--accent); font-weight: 600">configurator</text>
+          <text class="ns" x="306" y="436">preview, apply, rollback</text>
+
+          <!-- browser -->
+          <rect class="node" x="290" y="506" width="230" height="56" rx="10"/>
+          <text class="nt" x="306" y="530">Technician browser</text>
+          <text class="ns" x="306" y="548">any PC on the closed network</text>
+
+          <!-- devices <-> collectors -->
+          <path class="edge" d="M160 232 H215 V150 H288" marker-end="url(#ah)"/>
+          <text class="el" x="209" y="194" text-anchor="middle" transform="rotate(-90 209 194)">syslog 514</text>
+          <path class="edge" d="M160 290 H288" marker-end="url(#ah)"/>
+          <text class="el" x="224" y="283" text-anchor="middle">traps · 162</text>
+          <path class="edge" d="M288 318 H162" marker-end="url(#ah)"/>
+          <text class="el" x="224" y="334" text-anchor="middle">poll · 161</text>
+
+          <!-- collectors -> ingest (mTLS) -->
+          <path class="edge-sec" d="M520 104 H614" marker-end="url(#ahs)"/>
+          <text class="el-sec" x="567" y="96" text-anchor="middle">mTLS 6000</text>
+          <path class="edge-sec" d="M520 300 H580 V120 H614" marker-end="url(#ahs)"/>
+          <text class="el-sec" x="573" y="214" text-anchor="middle" transform="rotate(-90 573 214)">traps + metrics</text>
+
+          <!-- api -> configurator (approved writes) -->
+          <path class="edge-write" d="M614 418 H522" marker-end="url(#ahw)"/>
+          <text class="el-write" x="567" y="410" text-anchor="middle">mTLS 8443</text>
+          <text class="el-write" x="567" y="434" text-anchor="middle">approved only</text>
+
+          <!-- browser -> web -->
+          <path class="edge" d="M520 534 H614" marker-end="url(#ah)"/>
+          <text class="el" x="567" y="526" text-anchor="middle">HTTPS</text>
+
+          <!-- monicomm services -->
+          <rect class="node" x="616" y="78" width="150" height="52" rx="10"/>
+          <text class="nt" x="691" y="100" text-anchor="middle">ingest</text>
+          <text class="ns" x="691" y="118" text-anchor="middle">Vector</text>
+
+          <rect class="node" x="616" y="178" width="150" height="52" rx="10"/>
+          <text class="nt" x="691" y="200" text-anchor="middle">queue</text>
+          <text class="ns" x="691" y="218" text-anchor="middle">Redis 7.4</text>
+
+          <rect class="node" x="830" y="178" width="146" height="52" rx="10"/>
+          <text class="nt" x="903" y="200" text-anchor="middle">worker</text>
+          <text class="ns" x="903" y="218" text-anchor="middle">parse · analyze · PCAP</text>
+
+          <rect class="node" x="830" y="288" width="146" height="62" rx="10"/>
+          <text class="nt" x="903" y="310" text-anchor="middle">db</text>
+          <text class="ns" x="903" y="327" text-anchor="middle">Postgres 16 + Timescale</text>
+          <text class="ns" x="903" y="342" text-anchor="middle">+ pgvector</text>
+
+          <rect class="node" x="616" y="388" width="150" height="58" rx="10"/>
+          <text class="nt" x="691" y="411" text-anchor="middle">api</text>
+          <text class="ns" x="691" y="429" text-anchor="middle">FastAPI · Python 3.12</text>
+
+          <rect class="node" x="830" y="388" width="146" height="58" rx="10"/>
+          <text class="nt" x="903" y="411" text-anchor="middle">llm</text>
+          <text class="ns" x="903" y="429" text-anchor="middle">Ollama · local model</text>
+
+          <rect class="node" x="616" y="506" width="150" height="56" rx="10"/>
+          <text class="nt" x="691" y="529" text-anchor="middle">web</text>
+          <text class="ns" x="691" y="547" text-anchor="middle">nginx · React UI</text>
+
+          <!-- internal edges -->
+          <path class="edge" d="M691 130 V176" marker-end="url(#ah)"/>
+          <text class="el" x="699" y="158">events</text>
+          <path class="edge" d="M766 204 H828" marker-end="url(#ah)"/>
+          <text class="el" x="797" y="197" text-anchor="middle">jobs</text>
+          <path class="edge" d="M903 230 V286" marker-end="url(#ah)"/>
+          <text class="el" x="911" y="262">writes</text>
+          <path class="edge" d="M740 388 V319 H828" marker-end="url(#ah)"/>
+          <text class="el" x="784" y="312" text-anchor="middle">reads</text>
+          <path class="edge" d="M766 406 H828" marker-end="url(#ah)"/>
+          <text class="el" x="797" y="400" text-anchor="middle">prompt</text>
+          <path class="edge" d="M828 430 H768" marker-end="url(#ah)"/>
+          <text class="el" x="797" y="444" text-anchor="middle">tool calls</text>
+          <path class="edge" d="M691 504 V448" marker-end="url(#ah)"/>
+          <text class="el" x="699" y="480">/api proxy</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i class="sw"></i>plain traffic inside a zone</span>
+        <span><i class="sw sec"></i>crosses into Monicomm, mutual TLS</span>
+        <span><i class="sw write"></i>the only path toward devices: approved changes</span>
+      </div>
+      <figcaption>Ports are from <code>docker-compose.yml</code> and <code>docs/plans/syslog-snmp-deployment.md</code>. Example addresses: syslog 10.10.10.51, SNMP 10.10.10.52, Monicomm 10.20.0.10.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 2. Request flow -->
+  <section>
+    <h2>One question, end to end</h2>
+    <p>How a Chat AI answer is made. The model never reads the database directly. It asks <code>api</code> to run a small read-only tool, and every answer carries the row IDs it came from. Investigator, Analyzer summaries and change impact reports work the same way.</p>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 920 500" role="img" aria-label="Sequence: technician asks a question in web, web posts to api, api sends the question and tool list to llm, llm asks for a tool call, api runs read-only SQL on db, db returns rows, api returns the tool result to llm, llm writes the answer, api streams the answer with sources back through web to the technician.">
+          <defs>
+            <marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
+            <marker id="sas" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--primary)"/></marker>
+          </defs>
+          <!-- lifelines -->
+          <line class="life" x1="80" y1="62" x2="80" y2="486"/>
+          <line class="life" x1="260" y1="62" x2="260" y2="486"/>
+          <line class="life" x1="440" y1="62" x2="440" y2="486"/>
+          <line class="life" x1="620" y1="62" x2="620" y2="486"/>
+          <line class="life" x1="800" y1="62" x2="800" y2="486"/>
+          <rect class="node" x="20" y="20" width="120" height="42" rx="10"/><text class="nt" x="80" y="46" text-anchor="middle">Technician</text>
+          <rect class="node" x="200" y="20" width="120" height="42" rx="10"/><text class="nt" x="260" y="46" text-anchor="middle">web</text>
+          <rect class="node" x="380" y="20" width="120" height="42" rx="10"/><text class="nt" x="440" y="46" text-anchor="middle">api</text>
+          <rect class="node" x="560" y="20" width="120" height="42" rx="10"/><text class="nt" x="620" y="46" text-anchor="middle">llm</text>
+          <rect class="node" x="740" y="20" width="120" height="42" rx="10"/><text class="nt" x="800" y="46" text-anchor="middle">db</text>
+
+          <!-- messages -->
+          <path class="edge" d="M80 100 H258" marker-end="url(#sa)"/><text class="el" x="170" y="92" text-anchor="middle">“Why is VLAN 30 slow?”</text>
+          <path class="edge" d="M260 140 H438" marker-end="url(#sa)"/><text class="el mono" x="350" y="132" text-anchor="middle">POST /api/v1/chat</text>
+          <path class="edge" d="M440 180 H618" marker-end="url(#sa)"/><text class="el" x="530" y="172" text-anchor="middle">question + tool list</text>
+          <path class="edge" d="M620 220 H442" marker-end="url(#sa)"/><text class="el mono" x="530" y="212" text-anchor="middle">get_metric_series()</text>
+          <path class="edge-sec" d="M440 260 H798" marker-end="url(#sas)"/><text class="el-sec" x="620" y="252" text-anchor="middle">read-only SQL, time range from the UI</text>
+          <path class="edge" d="M800 300 H442" marker-end="url(#sa)"/><text class="el" x="620" y="292" text-anchor="middle">rows + row IDs</text>
+          <path class="edge" d="M440 340 H618" marker-end="url(#sa)"/><text class="el" x="530" y="332" text-anchor="middle">tool result</text>
+          <path class="edge" d="M620 380 H442" marker-end="url(#sa)"/><text class="el" x="530" y="372" text-anchor="middle">answer draft</text>
+          <path class="edge-sec" d="M440 420 H262" marker-end="url(#sas)"/><text class="el-sec" x="350" y="412" text-anchor="middle">stream answer + sources</text>
+          <path class="edge" d="M260 460 H82" marker-end="url(#sa)"/><text class="el" x="170" y="452" text-anchor="middle">answer, “AI” tag, sources</text>
+        </svg>
+      </div>
+      <figcaption>Every model call goes through <code>api/app/ai/llm_client.py</code>, which refuses any model address outside the closed network. Steps 4 to 7 can repeat when the model needs more than one tool.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 3. Modules -->
+  <section>
+    <h2>The six modules on this stack</h2>
+    <p>All six share one database and one model. Each owns its own folder in <code>api/app/modules/</code> and <code>web/src/features/</code>, with its accent color from the design system.</p>
+    <div class="modules">
+      <div class="mod"><div class="stripe-dash" style="background: var(--a-dash)"></div><div><h3>Dashboard</h3><p>Health at a glance, AI summary of what's abnormal now.</p><div class="reads"><b>Reads</b> metrics, findings, incidents</div></div></div>
+      <div class="mod"><div style="background: var(--a-chat)"></div><div><h3>Chat AI</h3><p>Answers technicians' questions with sources.</p><div class="reads"><b>Reads</b> everything, through read-only tools and RAG</div></div></div>
+      <div class="mod"><div style="background: var(--a-analyzer)"></div><div><h3>Analyzer</h3><p>Turns syslog, traps and SNMP metrics into findings. Simulates what a change would do.</p><div class="reads"><b>Reads</b> events, metrics, topology · <b>writes</b> findings, impact reports</div></div></div>
+      <div class="mod"><div style="background: var(--a-inv)"></div><div><h3>Incident Investigator</h3><p>Timeline and probable root cause for one incident.</p><div class="reads"><b>Reads</b> events, metrics, flows, neighbors · <b>writes</b> investigations</div></div></div>
+      <div class="mod"><div style="background: var(--a-map)"></div><div><h3>Mapper</h3><p>Live topology and inventory: devices, hosts, VMs, containers.</p><div class="reads"><b>Reads</b> LLDP/CDP, ARP, MAC tables, discovery from the SNMP server</div></div></div>
+      <div class="mod"><div style="background: var(--a-pcap)"></div><div><h3>Chatchup</h3><p>Upload a .pcap, get it parsed, summarized and searchable by chat.</p><div class="reads"><b>Reads</b> uploaded captures, parsed by the worker (tshark / Zeek)</div></div></div>
+    </div>
+  </section>
+
+  <!-- 4. Stack -->
+  <section>
+    <h2>Tech stack</h2>
+    <p><span class="pill built">Built</span> is on <code>main</code> and pinned. <span class="pill decided">Decided</span> is agreed in PROJECT.md but not built yet. <span class="pill proposed">Proposed</span> still needs the team's OK.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Part</th><th>Technology</th><th>Version</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr class="group"><td colspan="4">Front end · <code>web</code></td></tr>
+          <tr><td>UI framework</td><td>React + TypeScript, built with Vite</td><td class="v">19.0 · 5.7 · 6.1</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Design system</td><td>Pastel tokens in <code>tokens.css</code>, Segoe UI, light + dark</td><td class="v">section 6A</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Icons</td><td>lucide-react, bundled at build time</td><td class="v">0.474.0</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Web server</td><td>nginx: serves the UI, proxies <code>/api</code>, strict CSP</td><td class="v">1.27.3</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Primitives and widgets</td><td>Base UI, sonner (toasts), cmdk (⌘K), number-flow (counters)</td><td class="v">—</td><td><span class="pill decided">Decided</span></td></tr>
+          <tr><td>Charts · topology graph</td><td>Apache ECharts · Cytoscape.js or React Flow</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+          <tr><td>Styling helpers</td><td>Tailwind CSS + shadcn/ui</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+
+          <tr class="group"><td colspan="4">Back end · <code>api</code>, <code>worker</code></td></tr>
+          <tr><td>API</td><td>Python + FastAPI + Uvicorn, OpenAPI at <code>/api/docs</code></td><td class="v">3.12 · 0.115 · 0.34</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>LLM gateway</td><td><code>llm_client.py</code>, refuses public model URLs</td><td class="v">—</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Background jobs</td><td>arq or Celery, same codebase as the API</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+          <tr><td>PCAP parsing</td><td>tshark / Zeek in the worker</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+
+          <tr class="group"><td colspan="4">Data and AI · <code>db</code>, <code>queue</code>, <code>llm</code></td></tr>
+          <tr><td>Database</td><td>PostgreSQL + TimescaleDB + pgvector, one store for records, time series and embeddings</td><td class="v">16.6 · 2.17.2</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Queue and cache</td><td>Redis</td><td class="v">7.4.2</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Model server</td><td>Ollama (vLLM if there's a GPU)</td><td class="v">0.5.7</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Models</td><td>Qwen / Llama / Mistral for chat, nomic-embed or bge-m3 for embeddings</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+
+          <tr class="group"><td colspan="4">Collectors · separate deployments</td></tr>
+          <tr><td>Ingest into Monicomm</td><td>Vector, mutual TLS on 6000</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+          <tr><td>Syslog server</td><td>Vector: receive, archive, buffer, forward</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+          <tr><td>SNMP server</td><td>net-snmp snmptrapd, Telegraf, Vector shipper</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+          <tr><td>Configurator</td><td>Python with pysnmp, ncclient, scrapli, HTTPS API on 8443</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+
+          <tr class="group"><td colspan="4">Quality and delivery</td></tr>
+          <tr><td>Python checks</td><td>ruff (format + lint), pytest with an 80% coverage gate</td><td class="v">0.8.6 · 8.3.4</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Web checks</td><td>prettier, eslint, stylelint (blocks raw colors), vitest + Testing Library</td><td class="v">3.4 · 9.19 · 16.14 · 3.0</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Air-gap guard</td><td><code>check_airgap.py</code> + Docker test that the API can't reach out</td><td class="v">—</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>CI</td><td>GitHub Actions, four jobs, plus a required pre-push hook</td><td class="v">—</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Offline delivery</td><td><code>docker save</code> bundles + models + SHA-256 checksums</td><td class="v">—</td><td><span class="pill decided">Decided</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 5. Pipeline -->
+  <section>
+    <h2>From a laptop to the closed network</h2>
+    <p>Code is written and tested on connected machines. Only a checked bundle crosses into the closed network.</p>
+    <ol class="pipe">
+      <li><h3>Own branch</h3><p>Named after your GitHub username, for example <code>amit0604/feat-mapper-lldp</code>.</p></li>
+      <li><h3>Pre-push hook</h3><p>Air gap, ruff, pytest, prettier, eslint, stylelint, tsc, vitest, build.</p><span class="gate">Fails: push cancelled</span></li>
+      <li><h3>GitHub Actions</h3><p>Same checks, then the Docker smoke test with the no-internet probe.</p><span class="gate">Red: can't merge</span></li>
+      <li><h3>Pull request</h3><p>One reviewer. UI changes need light and dark screenshots.</p></li>
+      <li><h3>main</h3><p>Always deployable. Squash-merged.</p></li>
+      <li><h3>Offline bundle</h3><p>Images, models and checksums carried in on approved media, then <code>docker load</code> and <code>compose up</code>.</p></li>
+    </ol>
+  </section>
+
+  <div class="note">
+    <h3>Rules to settle</h3>
+    <p>The collector plan gives the SNMP server a configurator that can change devices after a human approves. CLAUDE.md rule 3 still says never write code that changes device config. The team needs to pick one and update the other file. Branch protection on <code>main</code> also isn't on yet, so step 3 doesn't block a merge until someone sets it in GitHub.</p>
+  </div>
+</div>
+</body>
+</html>
