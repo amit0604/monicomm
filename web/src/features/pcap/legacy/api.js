@@ -18,7 +18,11 @@ export function createApi(base) {
     if (tEnd !== null) p.set("t_end", tEnd);
     return p;
   };
-  const json = (body) => ({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const json = (body) => ({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
   return {
     list: () => request("/captures"),

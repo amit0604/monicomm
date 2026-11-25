@@ -70,13 +70,43 @@ const TEMPLATE = `
 <div class="cc-toast" data-ref="toast" role="status" hidden></div>`;
 
 export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
-  const api = createApi(apiBase);
+  // After destroy() a late API reply must not touch the removed DOM: replies then never settle,
+  // so no continuation (render, toast, polling) runs.
+  let alive = true;
+  const never = () => new Promise(() => {});
+  const api = Object.fromEntries(
+    Object.entries(createApi(apiBase)).map(([name, call]) => [
+      name,
+      (...args) =>
+        call(...args).then(
+          (value) => (alive ? value : never()),
+          (error) => (alive ? Promise.reject(error) : never()),
+        ),
+    ]),
+  );
   root.classList.add("chatchup");
   root.innerHTML = TEMPLATE; // static markup only; capture data always goes in via textContent
   const $ = (ref) => root.querySelector(`[data-ref="${ref}"]`);
-  const state = { id: null, capture: null, timeline: null, graph: null, protocol: "", minPackets: 1, tStart: null, tEnd: null, overview: null };
+  const state = {
+    id: null,
+    capture: null,
+    timeline: null,
+    graph: null,
+    protocol: "",
+    minPackets: 1,
+    tStart: null,
+    tEnd: null,
+    overview: null,
+  };
   const timers = new Set();
-  const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
+  const later = (fn, ms) => {
+    const t = setTimeout(() => {
+      timers.delete(t);
+      fn();
+    }, ms);
+    timers.add(t);
+    return t;
+  };
   const fail = (err) => toast(root, err.message);
 
   const graph = createGraph($("graph"), {
@@ -84,7 +114,13 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
     onEdge: (edge) => renderPair($("inspector"), edge, actions),
     onClear: () => showOverview(),
   });
-  const actions = { onBack: () => { graph.clear(); showOverview(); }, onHost: (ip) => selectHost(ip) };
+  const actions = {
+    onBack: () => {
+      graph.clear();
+      showOverview();
+    },
+    onHost: (ip) => selectHost(ip),
+  };
   const ai = { summary: () => api.summary(state.id), ask: (q) => api.ask(state.id, q) };
 
   // ---------- captures: list, upload, processing ----------
@@ -94,7 +130,9 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
     const select = $("captures");
     select.replaceChildren(
       el("option", { value: "" }, list.length ? "Choose a capture…" : "No captures yet"),
-      ...list.map((c) => el("option", { value: c.id }, `${c.filename} · ${fmt.bytes(c.size)} · ${c.status}`)),
+      ...list.map((c) =>
+        el("option", { value: c.id }, `${c.filename} · ${fmt.bytes(c.size)} · ${c.status}`),
+      ),
     );
     if (selectId) select.value = selectId;
   }
@@ -128,11 +166,18 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
       setStatus(pill("critical", `Failed: ${capture.error}`));
       return;
     }
-    setStatus(pill("ok", `${fmt.number(capture.analysis.packet_count)} packets · ${fmt.duration(capture.analysis.duration_s)}`));
+    setStatus(
+      pill(
+        "ok",
+        `${fmt.number(capture.analysis.packet_count)} packets · ${fmt.duration(capture.analysis.duration_s)}`,
+      ),
+    );
     refreshList(id).catch(fail); // status in the picker is now "done"
     state.capture = capture;
     Object.assign(state, { protocol: "", minPackets: 1, tStart: null, tEnd: null });
-    root.querySelectorAll("[data-protocol]").forEach((b) => b.classList.toggle("cc-active", b.dataset.protocol === ""));
+    root
+      .querySelectorAll("[data-protocol]")
+      .forEach((b) => b.classList.toggle("cc-active", b.dataset.protocol === ""));
     $("min").value = 1;
     $("minval").textContent = "1";
     $("start").hidden = true;
@@ -141,7 +186,8 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
 
     state.timeline = await api.timeline(id);
     const duration = state.timeline.duration;
-    for (const r of ["twStart", "twEnd"]) Object.assign($(r), { min: 0, max: duration, step: duration / 1000 || 0.001 });
+    for (const r of ["twStart", "twEnd"])
+      Object.assign($(r), { min: 0, max: duration, step: duration / 1000 || 0.001 });
     renderTimeline($("timeline"), $("caption"), state.timeline);
     setWindow(0, duration);
     await refresh();
@@ -165,14 +211,29 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
   }
 
   function renderKpis(o, g) {
-    const kpi = (label, value, sub) => el("div", { class: "cc-panel cc-kpi" }, el("div", { class: "cc-muted cc-small" }, label), el("div", { class: "cc-kpi-value" }, value), el("div", { class: "cc-muted cc-small" }, sub || " "));
+    const kpi = (label, value, sub) =>
+      el(
+        "div",
+        { class: "cc-panel cc-kpi" },
+        el("div", { class: "cc-muted cc-small" }, label),
+        el("div", { class: "cc-kpi-value" }, value),
+        el("div", { class: "cc-muted cc-small" }, sub || " "),
+      );
     $("kpis").replaceChildren(
       kpi("Packets", fmt.number(o.packets)),
-      kpi("Hosts", fmt.number(g.nodes.length), `${g.nodes.filter((n) => n.internal).length} internal`),
+      kpi(
+        "Hosts",
+        fmt.number(g.nodes.length),
+        `${g.nodes.filter((n) => n.internal).length} internal`,
+      ),
       kpi("Host pairs", fmt.number(g.edges.length)),
       kpi("Data", fmt.bytes(o.bytes)),
       kpi("Duration", fmt.duration(o.duration), fmt.datetime(o.start)),
-      kpi("Findings", fmt.number(o.suspicious.length), o.suspicious.length ? "scan / beacon" : "none"),
+      kpi(
+        "Findings",
+        fmt.number(o.suspicious.length),
+        o.suspicious.length ? "scan / beacon" : "none",
+      ),
     );
   }
 
@@ -183,7 +244,13 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
   async function showHost(ip) {
     try {
       const host = await api.host(state.id, ip);
-      renderHost($("inspector"), host, state.graph.nodes.find((n) => n.id === ip), graph.edgesOf(ip), actions);
+      renderHost(
+        $("inspector"),
+        host,
+        state.graph.nodes.find((n) => n.id === ip),
+        graph.edgesOf(ip),
+        actions,
+      );
     } catch (err) {
       fail(err);
     }
@@ -241,30 +308,42 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
   const dz = $("dropzone");
   dz.addEventListener("click", () => $("file").click());
   dz.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && $("file").click());
-  dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("cc-over"); });
+  dz.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dz.classList.add("cc-over");
+  });
   dz.addEventListener("dragleave", () => dz.classList.remove("cc-over"));
   dz.addEventListener("drop", (e) => {
     e.preventDefault();
     dz.classList.remove("cc-over");
     if (e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]);
   });
-  root.querySelectorAll("[data-protocol]").forEach((button) => button.addEventListener("click", async () => {
-    state.protocol = button.dataset.protocol;
-    root.querySelectorAll("[data-protocol]").forEach((b) => b.classList.toggle("cc-active", b === button));
-    await refresh().catch(fail);
-    showOverview();
-  }));
+  root.querySelectorAll("[data-protocol]").forEach((button) =>
+    button.addEventListener("click", async () => {
+      state.protocol = button.dataset.protocol;
+      root
+        .querySelectorAll("[data-protocol]")
+        .forEach((b) => b.classList.toggle("cc-active", b === button));
+      await refresh().catch(fail);
+      showOverview();
+    }),
+  );
   let minTimer = null;
   $("min").addEventListener("input", (e) => {
     state.minPackets = Number(e.target.value);
     $("minval").textContent = state.minPackets;
     clearTimeout(minTimer);
-    minTimer = later(async () => { await refresh().catch(fail); showOverview(); }, 200);
+    minTimer = later(async () => {
+      await refresh().catch(fail);
+      showOverview();
+    }, 200);
   });
   $("search").addEventListener("keydown", (e) => {
     if (e.key !== "Enter" || !state.graph) return;
     const q = e.target.value.trim();
-    const match = state.graph.nodes.find((n) => n.id === q) || state.graph.nodes.find((n) => n.id.startsWith(q));
+    const match =
+      state.graph.nodes.find((n) => n.id === q) ||
+      state.graph.nodes.find((n) => n.id.startsWith(q));
     if (match) selectHost(match.id);
     else toast(root, `No host matching "${q}".`);
   });
@@ -287,6 +366,7 @@ export function mountChatchup(root, { apiBase = "/api/v1/pcap" } = {}) {
     // Call after the shell switches theme: the graph and chart re-read the tokens.
     reload: () => state.id && state.timeline && refresh().then(showOverview).catch(fail),
     destroy() {
+      alive = false;
       timers.forEach(clearTimeout);
       resize.disconnect();
       graph.destroy();

@@ -49,10 +49,7 @@ async def upload(request: Request, background: BackgroundTasks):
     length = request.headers.get("content-length")
     if length is None:
         raise HTTPException(411, "Content-Length required")
-    if (
-        not length.isdigit()
-        or int(length) > service.MAX_UPLOAD_BYTES + MULTIPART_OVERHEAD
-    ):
+    if not length.isdigit() or int(length) > service.MAX_UPLOAD_BYTES + MULTIPART_OVERHEAD:
         raise _too_big()
 
     form = await request.form()
@@ -79,9 +76,7 @@ async def upload(request: Request, background: BackgroundTasks):
                 await run_in_threadpool(out.write, chunk)
         finally:
             out.close()
-    except (
-        BaseException
-    ):  # too big, disconnect, disk full: never leave a half capture behind
+    except BaseException:  # too big, disconnect, disk full: never leave a half capture behind
         service.delete_capture(capture_id)
         raise
 
@@ -109,7 +104,7 @@ def conversations(
     return _found(service.conversations, capture_id, offset, limit)
 
 
-# ---- network views (graph tab). t_start/t_end: seconds from the first packet ----------------------
+# ---- network views (graph tab). t_start/t_end: seconds from the first packet --------------
 
 
 @router.get("/captures/{capture_id}/graph")

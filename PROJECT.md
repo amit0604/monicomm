@@ -119,10 +119,13 @@ same data store and the same local LLM service.
   system role and never payload bytes. Memory is bounded (20k tracked flows, per-type anomaly caps with true
   totals in `anomaly_counts`). Upload size is checked from `Content-Length` before parsing; nginx must enforce
   `client_max_body_size` too.
-- **Interim, until the foundation lands:** results stored as JSON under `PCAP_DATA_DIR/<id>/`, analysis runs in
-  FastAPI `BackgroundTasks`; assumes `app.ai.llm_client.chat(messages) -> str` (async) and that `main.py` mounts
-  `app.modules.pcap.router.router` at `/api/v1/pcap`. Module deps: `api/requirements/pcap.txt`
-  (tests/lint: `pcap-dev.txt`). Tests: `python -m pytest api/tests/pcap`.
+- **Wiring:** `app/main.py` mounts `app.modules.pcap.router.router` at `/api/v1/pcap`. AI calls go through
+  `app.ai.llm_client.chat(messages) -> str` (async, Ollama `/api/chat`, URL checked by the air-gap guard,
+  `LLMError` on failure; any module can use it). Settings: `MONICOMM_PCAP_DATA_DIR`, `MONICOMM_PCAP_MAX_UPLOAD_MB`,
+  `MONICOMM_LLM_TIMEOUT_S`. Deps (`dpkt`, `python-multipart`, `httpx`) are in `api/pyproject.toml` / `uv.lock`.
+- **Interim:** results stored as JSON under `MONICOMM_PCAP_DATA_DIR/<id>/` and analysis runs in FastAPI
+  `BackgroundTasks`, until Chatchup moves to the DB and the shared worker. The api container needs that
+  directory on a volume, and nginx must allow uploads of `MONICOMM_PCAP_MAX_UPLOAD_MB`.
 - **Network views (graph tab):** `GET /captures/{id}/graph?protocol=&min_packets=&t_start=&t_end=` (hosts as
   nodes, host pairs as edges, hubs, scan/beacon hosts flagged) · `GET /captures/{id}/overview?t_start=&t_end=`
   (totals, protocol mix, top talkers/ports, findings) · `GET /captures/{id}/timeline` · `GET /captures/{id}/hosts/{ip}`.
@@ -130,10 +133,10 @@ same data store and the same local LLM service.
   analysis (1 s, coarsened automatically to stay under 200k bins), so no view re-reads the file.
 - **UI (TEMPORARY):** `web/src/features/pcap/legacy/` is the Chatchup tab in plain JS, adapted from the PCAP Lab
   workshop UI (network graph + inspector + timeline with time window, plus findings and the AI assistant).
-  It mounts into the shell as one tab: load `chatchup.css` and `vendor/cytoscape-3.30.2.min.js` (MIT,
-  vendored, air-gap safe), then `mountChatchup(el, { apiBase: "/api/v1/pcap" })`; call `.reload()` after a theme
-  switch and `.destroy()` when leaving the tab. Everything is scoped under `.chatchup` and reads the 6A tokens
-  with fallbacks. **To do:** port to React + shared components once the shell exists (rule 6), then delete `legacy/`.
+  `ChatchupTab.tsx` mounts it in the shell (`App.tsx`, module `pcap`) via `mountChatchup(el)`, re-reads tokens on
+  a theme switch and calls `.destroy()` when you leave the tab. Styles are scoped under `.chatchup` and use only
+  `tokens.css`. Graph: `cytoscape` 3.30.2 from npm (MIT), bundled by Vite, so nothing loads at runtime.
+  **To do:** port to React + shared components (rule 6), then delete `legacy/`.
 - **Later:** move storage to the DB and processing to the shared worker; link findings into an Investigation;
   per-user access once auth exists; packet list + hex view (the workshop has one).
 

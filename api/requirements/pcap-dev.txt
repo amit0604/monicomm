@@ -1,9 +1,0 @@
-# Chatchup tests and lint. Fold into the api lock file once the foundation adds it.
--r pcap.txt
-fastapi==0.165.0
-starlette==1.10.0
-pydantic==2.14.4
-httpx==0.28.1
-pytest==9.2.0
-ruff==0.17.6
-black==26.10.1

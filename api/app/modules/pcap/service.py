@@ -1,13 +1,12 @@
 """Chatchup service: capture storage, background analysis, AI summary and scoped chat.
 
-ponytail: captures live on disk as JSON next to the file (PCAP_DATA_DIR/<id>/), analysis runs
-in FastAPI BackgroundTasks. Move to DB tables + the shared worker queue when the foundation lands;
+ponytail: captures live on disk as JSON next to the file (MONICOMM_PCAP_DATA_DIR/<id>/), analysis
+runs in FastAPI BackgroundTasks. Move to DB tables + the shared worker queue once those exist;
 a capture left 'processing' by a restart stays that way until then.
 """
 
 import asyncio
 import json
-import os
 import re
 import shutil
 import time
@@ -15,10 +14,13 @@ import uuid
 from collections import defaultdict
 from pathlib import Path
 
+from app.ai import llm_client
+from app.core.config import get_settings
+
 from . import network, parser
 
-DATA_DIR = Path(os.environ.get("PCAP_DATA_DIR", "/data/pcap"))
-MAX_UPLOAD_BYTES = int(os.environ.get("PCAP_MAX_UPLOAD_MB", "500")) * 1024 * 1024
+DATA_DIR = Path(get_settings().pcap_data_dir)
+MAX_UPLOAD_BYTES = get_settings().pcap_max_upload_mb * 1024 * 1024
 ALLOWED_SUFFIXES = (".pcap", ".pcapng", ".cap")
 PROMPTS = Path(__file__).resolve().parents[2] / "ai" / "prompts"
 _ID = re.compile(r"^[0-9a-f]{32}$")
@@ -35,9 +37,7 @@ SEVERITY = [
     "tcp_retransmission",
 ]
 CAPTURE_CONVERSATIONS = 200  # largest conversations returned with GET /captures/{id}
-_chat_locks = defaultdict(
-    asyncio.Lock
-)  # ponytail: per-process lock, fine for one api replica
+_chat_locks = defaultdict(asyncio.Lock)  # ponytail: per-process lock, fine for one api replica
 
 
 class NotFound(Exception):
@@ -110,15 +110,11 @@ def process(capture_id: str) -> None:
     except Exception as e:
         if not d.is_dir():
             return  # deleted while processing
-        set_meta(
-            capture_id, status="failed", error=f"parser crashed: {type(e).__name__}"
-        )
+        set_meta(capture_id, status="failed", error=f"parser crashed: {type(e).__name__}")
         raise  # keep the record honest instead of stuck in 'processing', and log it
     if not d.is_dir():
         return
-    _write(
-        d / "timebins.json", result.pop("time_bins")
-    )  # only the network views read it
+    _write(d / "timebins.json", result.pop("time_bins"))  # only the network views read it
     _write(d / "analysis.json", result)
     set_meta(capture_id, status="done")
 
@@ -147,9 +143,7 @@ def _network_inputs(capture_id: str):
 
 
 def graph(capture_id: str, protocol: str, min_packets: int, t_start, t_end) -> dict:
-    return network.graph(
-        *_network_inputs(capture_id), protocol, min_packets, t_start, t_end
-    )
+    return network.graph(*_network_inputs(capture_id), protocol, min_packets, t_start, t_end)
 
 
 def overview(capture_id: str, t_start, t_end) -> dict:
@@ -199,15 +193,10 @@ def delete_capture(capture_id: str) -> None:
 
 
 async def _llm_chat(messages: list[dict]) -> str:
-    """The one place this module talks to the model (CLAUDE.md rule 1).
-
-    Assumes the foundation's `app.ai.llm_client.chat(messages) -> str` (plan assumption A1).
-    """
-    from app.ai import llm_client
-
+    """The one place this module talks to the model (CLAUDE.md rule 1)."""
     try:
         return await llm_client.chat(messages)
-    except Exception as e:
+    except llm_client.LLMError as e:
         raise LLMUnavailable(str(e)) from e
 
 
@@ -223,9 +212,7 @@ def llm_context(a: dict) -> dict:
     ctx = {k: a.get(k) for k in keys}
     a = {
         **a,
-        "anomalies": sorted(
-            a["anomalies"], key=lambda x: (_rank(x["type"]), x["packet"])
-        ),
+        "anomalies": sorted(a["anomalies"], key=lambda x: (_rank(x["type"]), x["packet"])),
     }
     convs = sorted(a["conversations"], key=lambda c: c["bytes"], reverse=True)
     ctx["conversations_total"] = len(convs)

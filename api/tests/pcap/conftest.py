@@ -1,21 +1,13 @@
 import socket
-import sys
-from pathlib import Path
 
 import dpkt
 import pytest
-
-sys.path.insert(
-    0, str(Path(__file__).resolve().parents[2])
-)  # make `app` importable from any cwd
 
 C, S = "10.0.0.1", "10.0.0.2"  # client, server
 
 
 def eth(src, dst, l4, proto):
-    ip = dpkt.ip.IP(
-        src=socket.inet_aton(src), dst=socket.inet_aton(dst), p=proto, data=l4
-    )
+    ip = dpkt.ip.IP(src=socket.inet_aton(src), dst=socket.inet_aton(dst), p=proto, data=l4)
     ip.len = len(ip)
     return bytes(dpkt.ethernet.Ethernet(type=dpkt.ethernet.ETH_TYPE_IP, data=ip))
 
@@ -24,9 +16,7 @@ def tcp(src, dst, sport, dport, flags, seq=0, ack=0, data=b""):
     return eth(
         src,
         dst,
-        dpkt.tcp.TCP(
-            sport=sport, dport=dport, flags=flags, seq=seq, ack=ack, data=data
-        ),
+        dpkt.tcp.TCP(sport=sport, dport=dport, flags=flags, seq=seq, ack=ack, data=data),
         dpkt.ip.IP_PROTO_TCP,
     )
 
@@ -52,9 +42,7 @@ RESP = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi"
 
 
 def dns_query():
-    q = dpkt.dns.DNS(
-        id=1, qd=[dpkt.dns.DNS.Q(name="core-sw-01.lan", type=dpkt.dns.DNS_A)]
-    )
+    q = dpkt.dns.DNS(id=1, qd=[dpkt.dns.DNS.Q(name="core-sw-01.lan", type=dpkt.dns.DNS_A)])
     return udp(C, "10.0.0.53", 5353, 53, bytes(q))
 
 

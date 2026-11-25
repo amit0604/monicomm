@@ -24,20 +24,14 @@ PCAPNG_MAGIC = b"\x0a\x0d\x0d\x0a"
 SLOW_HANDSHAKE_S = 0.2  # SYN -> SYN/ACK slower than this is flagged
 MAX_ITEMS = 1000  # cap per list (dns/http/tls) so the JSON stays small
 MAX_PER_ANOMALY_TYPE = 200  # per type, so floods of one kind never hide another
-MAX_CONVERSATIONS = (
-    20_000  # bounds memory on SYN floods/spoofing; later flows only counted
-)
+MAX_CONVERSATIONS = 20_000  # bounds memory on SYN floods/spoofing; later flows only counted
 MAX_TEXT = 200  # max length of payload-derived strings (host, uri, dns, sni)
 MAX_TIME_BINS = 200_000  # per-conversation time bins kept for time-window views
 MAX_STREAM_BYTES = 1_000_000  # follow-stream payload cap
 # Wireshark-style ASCII view: printable bytes and \t \n \r as-is, everything else "."
 _ASCII_VIEW = bytes(b if 32 <= b < 127 or b in (9, 10, 13) else 46 for b in range(256))
-PORT_SCAN_PORTS = (
-    100  # one client opening more distinct ports than this on one server = scan
-)
-BEACON_MIN_CONNECTIONS = (
-    5  # internal -> external connections needed to judge regularity
-)
+PORT_SCAN_PORTS = 100  # one client opening more distinct ports than this on one server = scan
+BEACON_MIN_CONNECTIONS = 5  # internal -> external connections needed to judge regularity
 BEACON_JITTER = 0.10  # every gap within 10% of the mean gap = timer-driven check-in
 INTERNAL_NETS = [
     ipaddress.ip_network(n)
@@ -258,7 +252,7 @@ def analyze(path) -> dict:
                     protocols["ARP"] += 1
                     proto_bytes["ARP"] += size
                     continue
-                if not isinstance(ip, (dpkt.ip.IP, dpkt.ip6.IP6)):
+                if not isinstance(ip, dpkt.ip.IP | dpkt.ip6.IP6):
                     protocols["Other"] += 1
                     proto_bytes["Other"] += size
                     continue
@@ -271,7 +265,7 @@ def analyze(path) -> dict:
                 elif isinstance(l4, dpkt.udp.UDP):
                     transport, sport, dport = "UDP", l4.sport, l4.dport
                     payload = bytes(l4.data)
-                elif isinstance(l4, (dpkt.icmp.ICMP, dpkt.icmp6.ICMP6)):
+                elif isinstance(l4, dpkt.icmp.ICMP | dpkt.icmp6.ICMP6):
                     transport, sport, dport, payload = "ICMP", 0, 0, b""
                 else:
                     transport, sport, dport, payload = "IP", 0, 0, b""
@@ -361,8 +355,7 @@ def analyze(path) -> dict:
         "duration_s": round(last_ts - first_ts, 6) if count else 0,
         "truncated_after_packet": truncated_at,
         "protocols": [
-            {"name": k, "packets": v, "bytes": proto_bytes[k]}
-            for k, v in protocols.most_common()
+            {"name": k, "packets": v, "bytes": proto_bytes[k]} for k, v in protocols.most_common()
         ],
         "conversations": conv_list,
         "untracked_packets": untracked,
@@ -370,9 +363,7 @@ def analyze(path) -> dict:
         "http": http,
         "tls": tls,
         "anomalies": anomalies,
-        "anomaly_counts": dict(
-            anomaly_counts
-        ),  # true totals, past the per-type cap too
+        "anomaly_counts": dict(anomaly_counts),  # true totals, past the per-type cap too
         "time_bins": bins.export(),  # stored apart by the service; feeds time-window views
     }
 
@@ -424,9 +415,7 @@ def _seq_after(a, b):
     return 0 < ((a - b) & 0xFFFFFFFF) < 0x80000000
 
 
-def _tcp_checks(
-    n, ts, tcp, src, dst, payload, conv, tcp_state, pending_syn, anomalies, counts
-):
+def _tcp_checks(n, ts, tcp, src, dst, payload, conv, tcp_state, pending_syn, anomalies, counts):
     """Handshake/reset/retransmission checks. Returns True if this is a retransmission.
 
     ponytail: a data segment that ends at or before the highest byte already seen in that
@@ -520,11 +509,7 @@ def _detect_patterns(convs, anomalies, counts) -> set:
                 },
             )
             continue
-        if (
-            len(items) < BEACON_MIN_CONNECTIONS
-            or not is_internal(client)
-            or is_internal(server)
-        ):
+        if len(items) < BEACON_MIN_CONNECTIONS or not is_internal(client) or is_internal(server):
             continue
         starts = sorted(c["start"] for c, _ in items)
         gaps = [b - a for a, b in itertools.pairwise(starts)]
@@ -538,7 +523,9 @@ def _detect_patterns(convs, anomalies, counts) -> set:
                     "packet": first["first_packet"],
                     "hosts": [client, server],
                     "conversations": ids[:50],
-                    "detail": f"{client} connected to {server} {len(items)} times every {mean:.1f} s",
+                    "detail": (
+                        f"{client} connected to {server} {len(items)} times every {mean:.1f} s"
+                    ),
                 },
             )
     return scanned
@@ -563,8 +550,7 @@ def _dns(n, payload, out):
         item["answers"] = [
             _addr(rr.rdata)
             for rr in msg.an
-            if (rr.type, len(rr.rdata))
-            in ((dpkt.dns.DNS_A, 4), (dpkt.dns.DNS_AAAA, 16))
+            if (rr.type, len(rr.rdata)) in ((dpkt.dns.DNS_A, 4), (dpkt.dns.DNS_AAAA, 16))
         ]
     _append(out, item)
 
@@ -582,7 +568,7 @@ def follow_stream(path, conv: dict) -> list[dict]:
     with open(path, "rb") as f:
         try:
             for n, ts, ip, _size in _packets(f):
-                if not isinstance(ip, (dpkt.ip.IP, dpkt.ip6.IP6)):
+                if not isinstance(ip, dpkt.ip.IP | dpkt.ip6.IP6):
                     continue
                 l4 = ip.data
                 if proto == "TCP" and not isinstance(l4, dpkt.tcp.TCP):

@@ -12,9 +12,7 @@ from .parser import is_internal
 
 TIMELINE_BUCKETS = 60
 TOP_N = 10
-HUB_MIN_DEGREE = (
-    4  # a hub talks to at least this many peers and is in the top ~10% by degree
-)
+HUB_MIN_DEGREE = 4  # a hub talks to at least this many peers and is in the top ~10% by degree
 PATTERN_TYPES = ("port_scan", "beacon")  # anomalies that mark hosts as suspicious
 
 WELL_KNOWN = {
@@ -31,7 +29,7 @@ WELL_KNOWN = {
 
 
 def _server_port(c: dict) -> int | None:
-    """The service side of a conversation: the SYN receiver, else a well-known port, else the lower one."""
+    """Service side of a conversation: SYN receiver, else a well-known port, else the lower one."""
     if c["protocol"] not in ("TCP", "UDP"):
         return None
     if c["client"]:
@@ -76,9 +74,7 @@ def _suspicious(analysis: dict, conv_ids: set | None = None) -> list[dict]:
     return out
 
 
-def graph(
-    analysis: dict, bins: dict, protocol: str, min_packets: int, t_start, t_end
-) -> dict:
+def graph(analysis: dict, bins: dict, protocol: str, min_packets: int, t_start, t_end) -> dict:
     """Hosts as nodes; one undirected edge per host pair, weighted by packets and bytes."""
     edges = {}
     for c, p, b in _windowed(analysis, bins, t_start, t_end):
@@ -133,7 +129,7 @@ def graph(
 
 
 def overview(analysis: dict, bins: dict, t_start, t_end) -> dict:
-    """Totals, protocol mix, top talkers, top ports and findings for the whole capture or a window."""
+    """Totals, protocol mix, top talkers/ports and findings, for the capture or a time window."""
     full = t_start is None and t_end is None
     rows = list(_windowed(analysis, bins, t_start, t_end))
     talkers = defaultdict(lambda: {"packets": 0, "bytes": 0})
@@ -159,9 +155,7 @@ def overview(analysis: dict, bins: dict, t_start, t_end) -> dict:
         "precision_s": None if full else bins["width_s"],
         "packets": analysis["packet_count"] if full else sum(p for _, p, _ in rows),
         "bytes": (
-            sum(x["bytes"] for x in analysis["protocols"])
-            if full
-            else sum(b for _, _, b in rows)
+            sum(x["bytes"] for x in analysis["protocols"]) if full else sum(b for _, _, b in rows)
         ),
         "hosts": len(talkers),
         "duration": round(hi - lo, 3),
@@ -184,9 +178,7 @@ def overview(analysis: dict, bins: dict, t_start, t_end) -> dict:
                 "hosts": a["hosts"],
                 "message": a["detail"],
             }
-            for a in _suspicious(
-                analysis, None if full else {c["id"] for c, _, _ in rows}
-            )
+            for a in _suspicious(analysis, None if full else {c["id"] for c, _, _ in rows})
         ],
         "anomaly_counts": analysis.get("anomaly_counts", {}),
     }

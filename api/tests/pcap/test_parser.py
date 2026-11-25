@@ -1,7 +1,9 @@
 import dpkt
 import pytest
+
 from app.modules.pcap import parser
-from conftest import REQ, RESP, C, S
+
+from .conftest import REQ, RESP, C, S
 
 
 def test_analyze_summary(sample_pcap):
@@ -34,7 +36,7 @@ def test_anomalies_cite_packets(sample_pcap):
 
 
 def test_port_scan_folds_resets(tmp_path):
-    from conftest import ACK, RST, SYN, tcp, write_pcap
+    from .conftest import ACK, RST, SYN, tcp, write_pcap
 
     pkts = []
     for port in range(1, 151):
@@ -47,7 +49,7 @@ def test_port_scan_folds_resets(tmp_path):
 
 
 def test_beacon_internal_to_external(tmp_path):
-    from conftest import SYN, tcp, write_pcap
+    from .conftest import SYN, tcp, write_pcap
 
     ext = "198.51.100.66"
     pkts = [(i * 30.0, tcp(C, ext, 40000 + i, 8443, SYN, seq=1)) for i in range(6)]
@@ -96,7 +98,8 @@ def test_truncated_file_does_not_crash(sample_pcap, cut):
 
 def test_pcapng(tmp_path):
     import dpkt
-    from conftest import scenario
+
+    from .conftest import scenario
 
     p = tmp_path / "s.pcapng"
     with open(p, "wb") as f:
@@ -107,7 +110,7 @@ def test_pcapng(tmp_path):
 
 
 def test_follow_stream_binary_is_readable(tmp_path):
-    from conftest import ACK, PSH, tcp, write_pcap
+    from .conftest import ACK, PSH, tcp, write_pcap
 
     pkt = tcp(C, S, 40000, 445, PSH | ACK, seq=1, data=b"\xfeSMB\x00\x01ok\r\n")
     p = write_pcap(tmp_path / "bin.pcap", [(1.0, pkt)])
@@ -117,12 +120,7 @@ def test_follow_stream_binary_is_readable(tmp_path):
 
 def _client_hello(sni: bytes) -> bytes:
     name = b"\x00" + len(sni).to_bytes(2, "big") + sni
-    ext = (
-        b"\x00\x00"
-        + (len(name) + 2).to_bytes(2, "big")
-        + len(name).to_bytes(2, "big")
-        + name
-    )
+    ext = b"\x00\x00" + (len(name) + 2).to_bytes(2, "big") + len(name).to_bytes(2, "big") + name
     body = (
         b"\x03\x03"
         + b"\x00" * 32
@@ -137,17 +135,15 @@ def _client_hello(sni: bytes) -> bytes:
 
 
 def test_tls_sni(tmp_path):
-    from conftest import ACK, PSH, tcp, write_pcap
+    from .conftest import ACK, PSH, tcp, write_pcap
 
-    pkt = tcp(
-        C, S, 40000, 443, PSH | ACK, seq=1, data=_client_hello(b"portal.example.com")
-    )
+    pkt = tcp(C, S, 40000, 443, PSH | ACK, seq=1, data=_client_hello(b"portal.example.com"))
     r = parser.analyze(write_pcap(tmp_path / "t.pcap", [(1.0, pkt)]))
     assert r["tls"] == [{"packet": 1, "sni": "portal.example.com", "conversation": 0}]
 
 
 def test_bad_dns_rdata_does_not_crash(tmp_path):
-    from conftest import udp, write_pcap
+    from .conftest import udp, write_pcap
 
     m = dpkt.dns.DNS(
         id=1,
@@ -155,54 +151,40 @@ def test_bad_dns_rdata_does_not_crash(tmp_path):
         qd=[dpkt.dns.DNS.Q(name="x.lan", type=dpkt.dns.DNS_A)],
         an=[
             dpkt.dns.DNS.RR(name="x.lan", type=dpkt.dns.DNS_A, rdata=b"\x01\x02\x03"),
-            dpkt.dns.DNS.RR(
-                name="x.lan", type=dpkt.dns.DNS_A, rdata=b"\x0a\x00\x00\x01"
-            ),
+            dpkt.dns.DNS.RR(name="x.lan", type=dpkt.dns.DNS_A, rdata=b"\x0a\x00\x00\x01"),
         ],
     )
     r = parser.analyze(
-        write_pcap(
-            tmp_path / "d.pcap", [(1.0, udp("10.0.0.53", C, 53, 5353, bytes(m)))]
-        )
+        write_pcap(tmp_path / "d.pcap", [(1.0, udp("10.0.0.53", C, 53, 5353, bytes(m)))])
     )
     assert r["dns"][0]["answers"] == ["10.0.0.1"]
 
 
 def test_http_query_string_never_stored(tmp_path):
-    from conftest import ACK, PSH, tcp, write_pcap
+    from .conftest import ACK, PSH, tcp, write_pcap
 
     req = b"GET /login?user=admin&password=S3cret HTTP/1.1\r\nHost: app\x07.lan\r\n\r\n"
     pkt = tcp(C, S, 40000, 80, PSH | ACK, seq=1, data=req)
     r = parser.analyze(write_pcap(tmp_path / "h.pcap", [(1.0, pkt)]))
-    assert r["http"] == [
-        {"packet": 1, "method": "GET", "host": "app?.lan", "uri": "/login"}
-    ]
+    assert r["http"] == [{"packet": 1, "method": "GET", "host": "app?.lan", "uri": "/login"}]
 
 
 def test_keepalive_is_not_retransmission(tmp_path):
-    from conftest import ACK, PSH, tcp, write_pcap
+    from .conftest import ACK, PSH, tcp, write_pcap
 
     pkts = [(1.0, tcp(C, S, 40000, 80, PSH | ACK, seq=1, data=b"hello"))]
-    pkts += [
-        (1.0 + 45 * i, tcp(C, S, 40000, 80, ACK, seq=5, data=b"\x00"))
-        for i in range(1, 6)
-    ]
+    pkts += [(1.0 + 45 * i, tcp(C, S, 40000, 80, ACK, seq=5, data=b"\x00")) for i in range(1, 6)]
     assert parser.analyze(write_pcap(tmp_path / "k.pcap", pkts))["anomalies"] == []
 
 
 def test_retransmission_flood_does_not_hide_scan(tmp_path, monkeypatch):
-    from conftest import ACK, PSH, RST, SYN, tcp, write_pcap
+    from .conftest import ACK, PSH, RST, SYN, tcp, write_pcap
 
     monkeypatch.setattr(parser, "MAX_PER_ANOMALY_TYPE", 10)
-    pkts = [
-        (0.001 * i, tcp(C, S, 40000, 80, PSH | ACK, seq=1, data=b"abc"))
-        for i in range(50)
-    ]
+    pkts = [(0.001 * i, tcp(C, S, 40000, 80, PSH | ACK, seq=1, data=b"abc")) for i in range(50)]
     for port in range(1, 151):
         pkts.append((1 + port * 0.01, tcp("10.0.0.7", S, 50000, port, SYN, seq=1)))
-        pkts.append(
-            (1 + port * 0.01, tcp(S, "10.0.0.7", port, 50000, RST | ACK, ack=2))
-        )
+        pkts.append((1 + port * 0.01, tcp(S, "10.0.0.7", port, 50000, RST | ACK, ack=2)))
     r = parser.analyze(write_pcap(tmp_path / "f.pcap", pkts))
     assert "port_scan" in {a["type"] for a in r["anomalies"]}
     assert r["anomaly_counts"]["tcp_retransmission"] == 49
@@ -210,7 +192,7 @@ def test_retransmission_flood_does_not_hide_scan(tmp_path, monkeypatch):
 
 
 def test_conversation_cap_bounds_memory(tmp_path, monkeypatch):
-    from conftest import SYN, tcp, write_pcap
+    from .conftest import SYN, tcp, write_pcap
 
     monkeypatch.setattr(parser, "MAX_CONVERSATIONS", 5)
     pkts = [(i * 0.001, tcp(C, S, 1000 + i, 80, SYN, seq=1)) for i in range(20)]

@@ -18,7 +18,7 @@ export function el(tag, attrs = {}, ...children) {
 }
 
 export function svg(tag, attrs = {}) {
-  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag); // airgap: allow (XML namespace id, never fetched)
   for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
   return node;
 }
@@ -41,19 +41,26 @@ export const fmt = {
     return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
   },
   datetime(epoch) {
-    return epoch ? new Date(epoch * 1000).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "medium" }) : "";
+    return epoch
+      ? new Date(epoch * 1000).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "medium" })
+      : "";
   },
 };
 
-// Reads a design token from the site's tokens.css, with the PROJECT.md 6A value as fallback.
-export function token(root, name, fallback) {
-  return getComputedStyle(root).getPropertyValue(name).trim() || fallback;
+// Reads a design token from web/src/styles/tokens.css (canvas drawing can't use var()).
+export function token(root, name) {
+  return getComputedStyle(root).getPropertyValue(name).trim();
 }
 
 // Status is never color alone: pill = icon + text, colored by status (PROJECT.md 6A).
 const STATUS_ICON = { ok: "●", warning: "◐", critical: "▲", info: "ℹ", neutral: "○", accent: "◆" };
 export function pill(status, text) {
-  return el("span", { class: `cc-pill cc-${status}` }, el("span", { "aria-hidden": "true" }, STATUS_ICON[status]), text);
+  return el(
+    "span",
+    { class: `cc-pill cc-${status}` },
+    el("span", { "aria-hidden": "true" }, STATUS_ICON[status]),
+    text,
+  );
 }
 
 export function toast(root, message) {

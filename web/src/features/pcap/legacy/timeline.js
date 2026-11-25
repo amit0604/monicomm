@@ -1,7 +1,10 @@
 // Traffic-over-time bar chart (packets per bucket) as inline SVG, plus the time-window overlay.
 import { fmt, svg } from "./ui.js";
 
-const HEIGHT = 112, LEFT = 44, BOTTOM = 20, TOP = 6;
+const HEIGHT = 112,
+  LEFT = 44,
+  BOTTOM = 20,
+  TOP = 6;
 
 export function renderTimeline(container, caption, { buckets, duration, bucket_s }) {
   container.replaceChildren();
@@ -10,7 +13,12 @@ export function renderTimeline(container, caption, { buckets, duration, bucket_s
   const plotW = width - LEFT;
   const plotH = HEIGHT - BOTTOM - TOP;
   const max = Math.max(...buckets.map((b) => b.packets), 1);
-  const root = svg("svg", { viewBox: `0 0 ${width} ${HEIGHT}`, preserveAspectRatio: "none", role: "img", "aria-label": "Packets over time" });
+  const root = svg("svg", {
+    viewBox: `0 0 ${width} ${HEIGHT}`,
+    preserveAspectRatio: "none",
+    role: "img",
+    "aria-label": "Packets over time",
+  });
 
   for (const f of [0, 0.5, 1]) {
     const y = TOP + plotH * (1 - f);
@@ -22,14 +30,26 @@ export function renderTimeline(container, caption, { buckets, duration, bucket_s
   const slot = plotW / buckets.length;
   buckets.forEach((b, i) => {
     const h = (b.packets / max) * plotH;
-    const rect = svg("rect", { class: "cc-bar", x: LEFT + i * slot + 1, y: TOP + plotH - h, width: Math.max(slot - 2, 1), height: Math.max(h, 0), rx: 2 });
+    const rect = svg("rect", {
+      class: "cc-bar",
+      x: LEFT + i * slot + 1,
+      y: TOP + plotH - h,
+      width: Math.max(slot - 2, 1),
+      height: Math.max(h, 0),
+      rx: 2,
+    });
     const title = svg("title");
     title.textContent = `${fmt.clock(b.t)}–${fmt.clock(b.t + bucket_s)}: ${fmt.number(b.packets)} packets, ${fmt.bytes(b.bytes)}`;
     rect.append(title);
     root.append(rect);
   });
   for (const f of [0, 0.25, 0.5, 0.75, 1]) {
-    const label = svg("text", { class: "cc-axis", x: LEFT + plotW * f, y: HEIGHT - 4, "text-anchor": f === 0 ? "start" : f === 1 ? "end" : "middle" });
+    const label = svg("text", {
+      class: "cc-axis",
+      x: LEFT + plotW * f,
+      y: HEIGHT - 4,
+      "text-anchor": f === 0 ? "start" : f === 1 ? "end" : "middle",
+    });
     label.textContent = fmt.clock(duration * f);
     root.append(label);
   }

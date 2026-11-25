@@ -1,10 +1,12 @@
 import json
 
 import pytest
-from app.modules.pcap import router, service
-from conftest import REQ
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+from app.modules.pcap import router, service
+
+from .conftest import REQ
 
 
 @pytest.fixture
@@ -66,9 +68,7 @@ def fake_llm(monkeypatch):
 
     async def fake(messages):
         calls.append(messages)
-        return (
-            "Port 80 session was reset [#7] after a retransmission [#5]. Bogus [#999]."
-        )
+        return "Port 80 session was reset [#7] after a retransmission [#5]. Bogus [#999]."
 
     monkeypatch.setattr(service, "_llm_chat", fake)
     return calls
@@ -88,13 +88,9 @@ def test_summary_and_chat(client, sample_pcap, fake_llm):
         system["role"] == "system" and '"packet_count"' not in system["content"]
     )  # data not in system role
     assert data["role"] == "user" and data["content"].startswith("<capture_analysis>")
-    assert (
-        REQ.decode() not in data["content"] and "HTTP/1.1" not in data["content"]
-    )  # no payloads
+    assert REQ.decode() not in data["content"] and "HTTP/1.1" not in data["content"]  # no payloads
 
-    a = client.post(
-        f"/api/v1/pcap/captures/{cid}/chat", json={"question": "why the reset?"}
-    ).json()
+    a = client.post(f"/api/v1/pcap/captures/{cid}/chat", json={"question": "why the reset?"}).json()
     assert a["sources"] == [5, 7]
     hist = client.get(f"/api/v1/pcap/captures/{cid}/chat").json()
     assert [m["role"] for m in hist] == ["user", "assistant"]
@@ -112,10 +108,7 @@ def test_summary_and_chat(client, sample_pcap, fake_llm):
 def test_chat_validation(client, sample_pcap, fake_llm):
     cid = upload(client, sample_pcap).json()["id"]
     assert (
-        client.post(
-            f"/api/v1/pcap/captures/{cid}/chat", json={"question": ""}
-        ).status_code
-        == 422
+        client.post(f"/api/v1/pcap/captures/{cid}/chat", json={"question": ""}).status_code == 422
     )
     assert (
         client.post(
@@ -159,14 +152,9 @@ def test_llm_down_is_503(client, sample_pcap, monkeypatch):
     cid = upload(client, sample_pcap).json()["id"]
     assert client.post(f"/api/v1/pcap/captures/{cid}/summary").status_code == 503
     assert (
-        client.post(
-            f"/api/v1/pcap/captures/{cid}/chat", json={"question": "x"}
-        ).status_code
-        == 503
+        client.post(f"/api/v1/pcap/captures/{cid}/chat", json={"question": "x"}).status_code == 503
     )
-    assert (
-        client.get(f"/api/v1/pcap/captures/{cid}/chat").json() == []
-    )  # failed turn not stored
+    assert client.get(f"/api/v1/pcap/captures/{cid}/chat").json() == []  # failed turn not stored
 
 
 def test_delete_while_processing_does_not_crash(client, sample_pcap, monkeypatch):
@@ -185,9 +173,7 @@ def test_conversations_paged_and_capture_trimmed(client, sample_pcap, monkeypatc
     cid = upload(client, sample_pcap).json()["id"]
     a = client.get(f"/api/v1/pcap/captures/{cid}").json()["analysis"]
     assert a["conversations_total"] == 3 and len(a["conversations"]) == 1
-    page = client.get(
-        f"/api/v1/pcap/captures/{cid}/conversations?offset=1&limit=1"
-    ).json()
+    page = client.get(f"/api/v1/pcap/captures/{cid}/conversations?offset=1&limit=1").json()
     assert page["total"] == 3 and [c["id"] for c in page["items"]] == [1]
 
 
@@ -195,8 +181,6 @@ def test_llm_context_puts_serious_anomalies_first(sample_pcap):
     from app.modules.pcap import parser
 
     a = parser.analyze(sample_pcap)
-    noise = [
-        {"type": "tcp_retransmission", "packet": i, "detail": ""} for i in range(1, 100)
-    ]
+    noise = [{"type": "tcp_retransmission", "packet": i, "detail": ""} for i in range(1, 100)]
     a["anomalies"] = noise + [{"type": "port_scan", "packet": 500, "detail": "scan"}]
     assert service.llm_context(a)["anomalies"][0]["type"] == "port_scan"
