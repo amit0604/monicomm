@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Monicomm pre-push hook: every push must pass the shared checks (PROJECT.md section 7).
+# Enable once per clone:   git config core.hooksPath .githooks
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+# Direct pushes to main are not allowed (use a PR from your username branch).
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "${MONICOMM_ALLOW_MAIN_PUSH:-}" != "1" ]; then
+    echo "Push to main blocked. Push your own branch (<username>/...) and open a pull request." >&2
+    exit 1
+  fi
+done
+
+echo "pre-push: running checks (air gap, API lint + tests, web lint + typecheck + tests + build)..."
+if ! bash scripts/check.sh --no-install; then
+  echo >&2
+  echo "pre-push: checks FAILED, push cancelled. Fix the errors above and push again." >&2
+  exit 1
+fi

@@ -58,6 +58,26 @@ same data store and the same local LLM service.
 - **Output:** "findings" records (what, where, when, severity, evidence) that the Dashboard,
   Chat and Investigator all read.
 
+#### Change impact analysis ("what if")
+- **Goal:** Before a technician makes a change, show **what that change would do** to the network.
+- **Examples of changes:** shutting down an interface or port, rebooting or replacing a device,
+  changing a VLAN, adding or removing a firewall/ACL rule, changing a route or link cost,
+  moving a VM or host, taking a link down for maintenance.
+- **Input:** the technician describes the change in plain language ("shut Gi1/0/24 on core-sw-01"),
+  picks it in the UI (select a node or link on the Mapper and choose an action), or pastes a config diff.
+- **How:** the AI turns the request into a structured change. The system then **simulates** it on a copy of
+  the Mapper topology, using recent traffic and flow data from the Analyzer:
+  - which hosts, VMs, containers and services lose connectivity, and which paths still work
+  - where traffic would be rerouted, and whether the alternate links have the capacity (utilization after the change)
+  - which flows or rules an ACL or firewall change would block or allow
+  - new single points of failure the change creates
+- **Output:** an impact report with a **risk level** (low / medium / high, shown with the section 6A status colors),
+  an affected-items list, a before/after view on the map, a suggested maintenance window
+  (lowest-traffic time from history) and a rollback note. Reports are saved and can be attached to an Investigation.
+- **Rule:** this is **simulation only**. Monicomm never applies the change to a device (AI design rule 3).
+- **Limits:** results are only as good as the discovered topology and traffic data. Every report states
+  what data it used and how current it is. Anything it couldn't see is marked "unknown", never "safe".
+
 ### 2.4 Incident Investigator
 - **Goal:** Investigate a specific incident or network event end to end.
 - **Scope:** hosts, ports, services, bottlenecks, link saturation, flapping interfaces,
@@ -397,6 +417,40 @@ EmptyState · Skeleton · ErrorState · ChatMessage · Timeline (Investigator) �
 - [ ] DB changes come with a migration
 - [ ] This file updated if a decision, API contract or module boundary changed
 
+### Tests and development pipeline (DECIDED)
+Everyone runs the **same checks**, locally and in CI, so "works on my machine" means it works for everyone.
+
+| Check | What it enforces | Tool |
+|---|---|---|
+| Air-gap check | No public URLs, CDNs, cloud AI or web-font hosts in app source | `scripts/check_airgap.py` |
+| API format + lint | One Python style, common bugs, basic security rules | `ruff format`, `ruff check` |
+| API tests | Unit + API tests, **coverage ≥ 80%** or the run fails | `pytest` + `pytest-cov` |
+| Web format + lint | One TS/CSS style. **Blocks raw hex colors, `rgb()` and px font sizes outside `tokens.css`** (section 6A) | `prettier`, `eslint`, `stylelint` |
+| Web typecheck + tests + build | Strict TypeScript, component tests, production build | `tsc`, `vitest` + Testing Library, `vite build` |
+| Docker smoke test | Whole stack starts, UI and API answer through nginx, and **the api container can't reach the internet** | `scripts/smoke_test.sh` |
+
+**Before you push:** run the full suite (needs Python + [uv](https://docs.astral.sh/uv/), Node 22, Docker):
+```powershell
+.\scripts\check.ps1            # Windows. Add -Docker for the full stack test
+./scripts/check.sh             # Linux / macOS / Git Bash. Add --docker
+```
+**On every push (REQUIRED):** the repo's pre-push hook (`.githooks/pre-push`) runs the full check suite and **cancels the push if anything fails**. It also blocks direct pushes to `main`. Enable it once, right after cloning:
+```powershell
+git config core.hooksPath .githooks
+```
+Don't bypass it with `--no-verify`. CI runs the same checks anyway, and a red PR can't be merged.
+
+**On every commit (optional but recommended):** `uv tool install pre-commit` then `pre-commit install`. It runs the fast checks (format, lint, air gap, secrets).
+**On every push and PR:** GitHub Actions (`.github/workflows/ci.yml`) runs all of the above. **A PR can't be merged to `main` until CI is green and one reviewer approves.**
+
+Rules:
+- New code comes with tests. Bug fixes come with a test that fails without the fix.
+- API tests live in `api/tests/`. Web tests sit next to the component (`Foo.tsx` → `Foo.test.tsx`).
+- Don't disable a lint rule to make CI pass. If a rule is wrong, change it for everyone in its config file in its own PR.
+- A line that must mention an external URL on purpose (for example a test that checks it's refused) gets the comment `airgap: allow`.
+- Repo-wide editor settings: `.editorconfig`, LF line endings (`.gitattributes`), recommended VS Code extensions in `.vscode/extensions.json`.
+- Every PR uses the template in `.github/pull_request_template.md` (the definition-of-done checklist).
+
 ### Decisions
 Big technical choices get a short ADR in `docs/adr/NNNN-title.md` (context, decision, consequences)
 and a one-line entry in the decision log below.
@@ -434,7 +488,7 @@ and a one-line entry in the decision log below.
 | **1. Data in** | Collector: syslog + SNMP polling + traps; storage; basic inventory | Real devices show up and their logs/metrics land in the DB |
 | **2. See it** | Dashboard v1, Mapper v1 (LLDP/CDP/ARP), Analyzer v1 (log parsing + findings) | A technician can see health, map and findings |
 | **3. Ask it** | Chat AI with tools, Chatchup PCAP upload + summary | Chat answers network questions with sources; a PCAP gets parsed and summarized |
-| **4. Investigate** | Incident Investigator with timeline + root cause, anomaly detection | An incident can be opened, investigated and closed with AI help |
+| **4. Investigate** | Incident Investigator with timeline + root cause, anomaly detection, Analyzer change impact analysis | An incident can be opened, investigated and closed with AI help. A proposed change gets an impact report before it's made |
 | **5. Harden** | Security review, performance, backups, docs, VM/container discovery | Release candidate for the closed network |
 
 ---
@@ -461,6 +515,7 @@ and a one-line entry in the decision log below.
 7. Data retention period for logs, metrics and captures.
 8. Tailwind + shadcn/ui for the front end: yes or no?
 9. Syslog/SNMP servers: open questions in `docs/plans/syslog-snmp-deployment.md` §12 (device families and versions, management path, vSphere layout, write approval, NETCONF).
+10. Change impact analysis: which device vendors/OS config formats must we read for pasted config diffs (Cisco IOS, Juniper, FortiGate...)?
 
 ---
 
@@ -471,6 +526,9 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | System is air-gapped, fully local, delivered as Docker containers | DECIDED |
 | 2026-11-25 | Six modules: Chat AI, Dashboard, Analyzer, Incident Investigator, Mapper, Chatchup (PCAP) | DECIDED |
 | 2026-11-25 | UI: pastel design system, Segoe UI font, Grafana + monday.com style, light and dark themes (section 6A) | DECIDED |
+| 2026-11-25 | Analyzer includes change impact analysis ("what if"): simulation only, never applied to devices (section 2.3) | DECIDED |
+| 2026-11-25 | Shared test + CI pipeline: ruff/pytest, prettier/eslint/stylelint/vitest, air-gap check, Docker smoke test (section 7) | DECIDED |
+| 2026-11-25 | `web` (nginx) serves the UI and proxies `/api`, so it also plays the `proxy` role for now. Backend containers sit on an `internal` Docker network with no way out | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |
 | 2026-11-25 | Syslog server and SNMP server are separate Docker deployments on their own vSphere VMs, forwarding to Monicomm over mTLS; device credentials and config writes live only on the SNMP server | PROPOSED |
 
