@@ -196,7 +196,7 @@ async def _llm_chat(messages: list[dict]) -> str:
     """The one place this module talks to the model (CLAUDE.md rule 1)."""
     try:
         return await llm_client.chat(messages)
-    except llm_client.LLMError as e:
+    except (llm_client.LLMUnavailable, llm_client.ExternalEndpointError) as e:
         raise LLMUnavailable(str(e)) from e
 
 

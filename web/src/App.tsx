@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { MODULES, type ModuleId } from "./modules";
+import { Toaster } from "sonner";
 import { StatusPill } from "./components/ui/StatusPill";
 import { ChatchupTab } from "./features/pcap/ChatchupTab";
+import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
+import { useCriticalIncidentToasts } from "./features/investigator/useIncidents";
 
 type Theme = "light" | "dark";
 
@@ -14,6 +17,13 @@ function initialTheme(): Theme {
 export default function App() {
   const [active, setActive] = useState<ModuleId>("dashboard");
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [incidentId, setIncidentId] = useState<string | null>(null);
+
+  const openIncident = useCallback((id: string) => {
+    setActive("investigator");
+    setIncidentId(id);
+  }, []);
+  useCriticalIncidentToasts(openIncident);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -53,12 +63,15 @@ export default function App() {
         <main className="content">
           {active === "pcap" ? (
             <ChatchupTab theme={theme} />
+          ) : active === "investigator" ? (
+            <InvestigatorPage selectedId={incidentId} onSelect={setIncidentId} />
           ) : (
             <section className="panel">
               <StatusPill status="info" label="Coming soon" />
             </section>
           )}
         </main>
+        <Toaster theme={theme} position="bottom-right" closeButton />
       </div>
     </div>
   );

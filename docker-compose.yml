@@ -21,13 +21,17 @@ services:
   api:
     build: ./api
     env_file: .env
-    volumes:
-      - pcap-data:/data/pcap   # Chatchup captures + analyses (MONICOMM_PCAP_DATA_DIR)
     depends_on:
       db:
         condition: service_healthy
       queue:
         condition: service_healthy
+    volumes:
+      - pcap-data:/data/pcap   # Chatchup captures + analyses (MONICOMM_PCAP_DATA_DIR)
+      - investigator-data:/data/investigator
+      # Incident Investigator input: the collectors' dev-ingest directory, read-only.
+      # Uncomment and set MONICOMM_INVESTIGATOR_INGEST_DIR=/ingest in .env:
+      # - ./dev-ingest:/ingest:ro
     networks: [backend]
     restart: unless-stopped
 
@@ -74,3 +78,4 @@ volumes:
   db-data: {}
   llm-models: {}
   pcap-data: {}
+  investigator-data: {}

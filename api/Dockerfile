@@ -8,9 +8,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
-# Chatchup volume: a new named volume takes this directory's owner, so the app user can write to it.
-RUN useradd --system --uid 10001 monicomm \
- && mkdir -p /data/pcap && chown monicomm /data/pcap
+# Named volumes take this directory's owner, so the app user can write to them.
+RUN useradd --system --uid 10001 monicomm  && mkdir -p /data/pcap /data/investigator && chown monicomm /data/pcap /data/investigator
 USER monicomm
 ENV PATH="/srv/.venv/bin:$PATH"
 EXPOSE 8000
