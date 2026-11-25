@@ -13,6 +13,8 @@ Each node runs:
   `[Monicomm lab simulation]`. It sends **linkDown/linkUp informs** (`moni-trap`) when a port changes, checked every 5 s.
 - **rsyslog:** forwards everything to the syslog server (UDP 514).
 - **Four dummy "ports"** (`port1`..`port4`) that really go down and up.
+- **lldpd:** LLDP (and CDP) on the LAN port, exported into `snmpd` through AgentX, so the poller reads
+  `LLDP-MIB` neighbors and the Mapper draws the real `lab-cisco1 <-> lab-junos1` link.
 - **`moni-sim`:** makes events on demand. A timer also makes a random event every ~15 min.
 
 The nodes are joined to the LAN through EVE-NG's **Cloud0** (`pnet0`), so the collectors see them like any device.
@@ -57,6 +59,11 @@ moni-sim login-fail     # failed-login syslog
 Check from the SNMP server: `./snmpq get 10.100.102.161 .1.3.6.1.2.1.1.1.0` (sysDescr).
 
 ## Notes
+
+- LLDP needs EVE-NG's Cloud0 bridge to forward LLDP frames. `build-lab.sh` sets
+  `echo 16384 > /sys/class/net/pnet0/bridge/group_fwd_mask`. That's lost when EVE-NG reboots: re-run it,
+  or add it as a `post-up` line under `iface pnet0` in `/etc/network/interfaces` on the EVE-NG host.
+- Check LLDP on a node with `lldpcli show neighbors`.
 
 - Requirements: about 0.5 GB RAM per node, plus EVE-NG's own ~1.5 GB.
 - When `snmpd` starts, it sends linkUp informs for interfaces that are already up. Expect that noise after a boot.

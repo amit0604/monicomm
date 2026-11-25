@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # "ollama" = local, the only option on the closed network; "gemini" = dev-only (env=dev)
     llm_provider: str = "ollama"
     gemini_api_key: str = ""  # local .env only, never in git
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"  # 2.5-flash is deprecated (shutdown 2026-12-01)
     llm_settings_file: str = ".env.llm.json"  # what the Admin page saved; dev login only
     # "none" = no login; "local" = users in users_file, works on the closed network
     auth_provider: str = "none"

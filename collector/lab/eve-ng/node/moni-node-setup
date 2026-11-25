@@ -47,6 +47,9 @@ sysDescr $SYSDESCR
 sysObjectID $SYSOID
 sysLocation Monicomm EVE-NG lab ($STYLE style)
 sysContact monicomm-lab
+# lldpd publishes its LLDP neighbors (LLDP-MIB) through AgentX, so the poller/Mapper see links.
+master agentx
+agentXSocket tcp:127.0.0.1:705
 createUser $SNMP_USER SHA "$SNMP_AUTH_PASS" AES "$SNMP_PRIV_PASS"
 rouser $SNMP_USER priv
 # Internal user for the agent's own link monitoring, limited to the interface tables.
@@ -67,5 +70,5 @@ chmod 640 /etc/snmp/snmpd.conf
 # Syslog: everything to the collector over UDP 514.
 echo "*.* @$COLLECTOR:514" > /etc/rsyslog.d/60-moni.conf
 
-systemctl restart --no-block rsyslog snmpd
+systemctl restart --no-block rsyslog snmpd lldpd
 logger -t moni-node "monicomm lab node $NODE_NAME up ($STYLE style, $NODE_IP)"
