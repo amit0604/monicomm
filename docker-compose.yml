@@ -22,7 +22,7 @@ services:
     build: ./api
     env_file: .env
     volumes:
-      - pcap-data:/data/pcap   # Chatchup captures + analyses (MONICOMM_PCAP_DATA_DIR)
+      - pcap-data:/data/pcap   # Catchup captures + analyses (MONICOMM_PCAP_DATA_DIR)
     depends_on:
       db:
         condition: service_healthy

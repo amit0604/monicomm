@@ -1,4 +1,4 @@
-"""Chatchup service: capture storage, background analysis, AI summary and scoped chat.
+"""Catchup service: capture storage, background analysis, AI summary and scoped chat.
 
 ponytail: captures live on disk as JSON next to the file (MONICOMM_PCAP_DATA_DIR/<id>/), analysis
 runs in FastAPI BackgroundTasks. Move to DB tables + the shared worker queue once those exist;

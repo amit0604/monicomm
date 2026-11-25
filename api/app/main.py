@@ -11,7 +11,7 @@ MODULES = [
     {"id": "analyzer", "name": "Analyzer"},
     {"id": "investigator", "name": "Incident Investigator"},
     {"id": "mapper", "name": "Mapper"},
-    {"id": "pcap", "name": "Chatchup"},
+    {"id": "pcap", "name": "Catchup"},
 ]
 
 app = FastAPI(

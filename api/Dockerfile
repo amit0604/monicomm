@@ -8,7 +8,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
-# Chatchup volume: a new named volume takes this directory's owner, so the app user can write to it.
+# Catchup volume: a new named volume takes this directory's owner, so the app user can write to it.
 RUN useradd --system --uid 10001 monicomm \
  && mkdir -p /data/pcap && chown monicomm /data/pcap
 USER monicomm

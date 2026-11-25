@@ -99,8 +99,8 @@ same data store and the same local LLM service.
 - **Must have:** interactive graph (zoom, filter by VLAN/site/type, click a node for details),
   inventory table view, change history.
 
-### 2.6 Chatchup: packet capture (PCAP) investigation
-> **DECIDED:** Chatchup = **packet capture files (.pcap / .pcapng)**. Code lives in `api/app/modules/pcap/`.
+### 2.6 Catchup: packet capture (PCAP) investigation
+> **DECIDED:** Catchup = **packet capture files (.pcap / .pcapng)**. Code lives in `api/app/modules/pcap/`.
 - **Goal:** Upload a capture file and investigate what happened in it.
 - **Flow:** upload a .pcap/.pcapng → the backend parses it (tshark / Zeek) into conversations,
   protocols, DNS/HTTP/TLS metadata, retransmissions, resets, latency → the AI summarizes the
@@ -124,17 +124,17 @@ same data store and the same local LLM service.
   `LLMError` on failure; any module can use it). Settings: `MONICOMM_PCAP_DATA_DIR`, `MONICOMM_PCAP_MAX_UPLOAD_MB`,
   `MONICOMM_LLM_TIMEOUT_S`. Deps (`dpkt`, `python-multipart`, `httpx`) are in `api/pyproject.toml` / `uv.lock`.
 - **Interim:** results stored as JSON under `MONICOMM_PCAP_DATA_DIR/<id>/` and analysis runs in FastAPI
-  `BackgroundTasks`, until Chatchup moves to the DB and the shared worker. The api container needs that
+  `BackgroundTasks`, until Catchup moves to the DB and the shared worker. The api container needs that
   directory on a volume, and nginx must allow uploads of `MONICOMM_PCAP_MAX_UPLOAD_MB`.
 - **Network views (graph tab):** `GET /captures/{id}/graph?protocol=&min_packets=&t_start=&t_end=` (hosts as
   nodes, host pairs as edges, hubs, scan/beacon hosts flagged) · `GET /captures/{id}/overview?t_start=&t_end=`
   (totals, protocol mix, top talkers/ports, findings) · `GET /captures/{id}/timeline` · `GET /captures/{id}/hosts/{ip}`.
   `t_start`/`t_end` are seconds from the first packet; windows use per-conversation time bins stored next to the
   analysis (1 s, coarsened automatically to stay under 200k bins), so no view re-reads the file.
-- **UI (TEMPORARY):** `web/src/features/pcap/legacy/` is the Chatchup tab in plain JS, adapted from the PCAP Lab
+- **UI (TEMPORARY):** `web/src/features/pcap/legacy/` is the Catchup tab in plain JS, adapted from the PCAP Lab
   workshop UI (network graph + inspector + timeline with time window, plus findings and the AI assistant).
-  `ChatchupTab.tsx` mounts it in the shell (`App.tsx`, module `pcap`) via `mountChatchup(el)`, re-reads tokens on
-  a theme switch and calls `.destroy()` when you leave the tab. Styles are scoped under `.chatchup` and use only
+  `CatchupTab.tsx` mounts it in the shell (`App.tsx`, module `pcap`) via `mountCatchup(el)`, re-reads tokens on
+  a theme switch and calls `.destroy()` when you leave the tab. Styles are scoped under `.catchup` and use only
   `tokens.css`. Graph: `cytoscape` 3.30.2 from npm (MIT), bundled by Vite, so nothing loads at runtime.
   **To do:** port to React + shared components (rule 6), then delete `legacy/`.
 - **Later:** move storage to the DB and processing to the shared worker; link findings into an Investigation;
@@ -224,7 +224,7 @@ monicomm/
 │       │   ├── analyzer/
 │       │   ├── investigator/
 │       │   ├── mapper/
-│       │   └── pcap/          ← "Chatchup"
+│       │   └── pcap/          ← "Catchup"
 │       └── workers/
 ├── collector/                 ← separate deployments, each with its own docker-compose.yml
 │   ├── syslog-server/         ← Vector: receive, archive, forward
@@ -361,7 +361,7 @@ Each module has its own pastel accent (nav icon, page header stripe, chart defau
 | Analyzer | mint `#8FE0C4` |
 | Incident Investigator | coral `#FFA3AE` |
 | Mapper | sky `#8FD3F5` |
-| Chatchup (PCAP) | peach `#FFC29E` |
+| Catchup (PCAP) | peach `#FFC29E` |
 
 ### Chart palette (categorical, in this order)
 `#8EA8FF` periwinkle · `#7FD8BE` mint · `#FFB38A` peach · `#C3A6FF` lavender · `#FF9AA8` pink · `#7CCCF2` sky · `#F5D36B` butter · `#A8D672` pistachio
@@ -391,7 +391,7 @@ Each module has its own pastel accent (nav icon, page header stripe, chart defau
 │          │   │ board-style table (monday-style)             │           │
 └──────────┴──────────────────────────────────────────────────────────────┘
 ```
-- **Side nav:** collapsible (240px → 64px icons only). The six modules in a fixed order (Dashboard, Chat AI, Analyzer, Incident Investigator, Mapper, Chatchup), each with its accent color.
+- **Side nav:** collapsible (240px → 64px icons only). The six modules in a fixed order (Dashboard, Chat AI, Analyzer, Incident Investigator, Mapper, Catchup), each with its accent color.
 - **Top bar:** the **time-range picker** is global (Grafana-style: Last 15m / 1h / 6h / 24h / 7d / custom) and every module respects it.
 - **Panels:** white card, `--radius-lg`, `--shadow-1`, 16px padding, header with title + "⋯" menu (view full screen, export CSV/PNG, open in Investigator).
 - **Board tables (monday-style):** rows grouped under colored group headers, a 4px colored stripe on the left of each group, full-width status pills in status columns, inline row actions on hover, sticky header, column picker, density toggle (comfortable / compact).
@@ -506,7 +506,7 @@ and a one-line entry in the decision log below.
 | Analyzer (SNMP / syslog / logs) | _TBD_ | |
 | Incident Investigator | _TBD_ | |
 | Mapper | _TBD_ | |
-| Chatchup (PCAP) | _TBD_ | |
+| Catchup (PCAP) | _TBD_ | |
 | Platform: Docker, DB, LLM, air-gap bundle | _TBD_ | |
 | Front-end shell and design system | _TBD_ | |
 
@@ -521,7 +521,7 @@ and a one-line entry in the decision log below.
 | **0. Foundation** | Repo skeleton, compose stack, DB, auth, LLM gateway, UI shell with 6 empty pages, offline bundle script | `docker compose up` shows the UI and can send a prompt to the local model, all with outside networking blocked |
 | **1. Data in** | Collector: syslog + SNMP polling + traps; storage; basic inventory | Real devices show up and their logs/metrics land in the DB |
 | **2. See it** | Dashboard v1, Mapper v1 (LLDP/CDP/ARP), Analyzer v1 (log parsing + findings) | A technician can see health, map and findings |
-| **3. Ask it** | Chat AI with tools, Chatchup PCAP upload + summary | Chat answers network questions with sources; a PCAP gets parsed and summarized |
+| **3. Ask it** | Chat AI with tools, Catchup PCAP upload + summary | Chat answers network questions with sources; a PCAP gets parsed and summarized |
 | **4. Investigate** | Incident Investigator with timeline + root cause, anomaly detection, Analyzer change impact analysis | An incident can be opened, investigated and closed with AI help. A proposed change gets an impact report before it's made |
 | **5. Harden** | Security review, performance, backups, docs, VM/container discovery | Release candidate for the closed network |
 
@@ -540,7 +540,7 @@ and a one-line entry in the decision log below.
 
 ## 11. Open questions
 
-1. ~~Confirm feature 6: is "pickup files" = **PCAP** files?~~ Resolved: yes, module `pcap`, product name Chatchup.
+1. ~~Confirm feature 6: is "pickup files" = **PCAP** files?~~ Resolved: yes, module `pcap`, product name Catchup.
 2. Target hardware: is there a GPU? That decides the model size and Ollama vs vLLM.
 3. Expected scale: number of devices, syslog messages per second, PCAP sizes.
 4. Which hypervisors / container platforms must the Mapper support?
@@ -558,14 +558,15 @@ and a one-line entry in the decision log below.
 | Date | Decision | Status |
 |---|---|---|
 | 2026-11-25 | System is air-gapped, fully local, delivered as Docker containers | DECIDED |
-| 2026-11-25 | Six modules: Chat AI, Dashboard, Analyzer, Incident Investigator, Mapper, Chatchup (PCAP) | DECIDED |
+| 2026-11-25 | Six modules: Chat AI, Dashboard, Analyzer, Incident Investigator, Mapper, Catchup (PCAP) | DECIDED |
 | 2026-11-25 | UI: pastel design system, Segoe UI font, Grafana + monday.com style, light and dark themes (section 6A) | DECIDED |
 | 2026-11-25 | Analyzer includes change impact analysis ("what if"): simulation only, never applied to devices (section 2.3) | DECIDED |
 | 2026-11-25 | Shared test + CI pipeline: ruff/pytest, prettier/eslint/stylelint/vitest, air-gap check, Docker smoke test (section 7) | DECIDED |
 | 2026-11-25 | `web` (nginx) serves the UI and proxies `/api`, so it also plays the `proxy` role for now. Backend containers sit on an `internal` Docker network with no way out | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |
 | 2026-11-25 | Syslog server and SNMP server are separate Docker deployments on their own vSphere VMs, forwarding to Monicomm over mTLS; device credentials and config writes live only on the SNMP server | PROPOSED |
-| 2026-11-25 | Chatchup = PCAP module; parser is `dpkt` (pure Python), tshark/Zeek only if deeper dissection is needed | DECIDED |
+| 2026-11-25 | Catchup = PCAP module; parser is `dpkt` (pure Python), tshark/Zeek only if deeper dissection is needed | DECIDED |
+| 2026-11-25 | Module 6 is named **Catchup** (was "Chatchup") in the UI, API module list, prompts and code; module id stays `pcap` | DECIDED |
 
 ---
 
