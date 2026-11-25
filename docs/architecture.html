@@ -118,16 +118,16 @@
   <header>
     <div class="eyebrow">Monicomm · how it's built</div>
     <h1>Tech stack and app flow</h1>
-    <p class="lede">Three Docker deployments on a closed network. Collectors touch the devices. Monicomm holds the data, the UI and the local AI, with no route to the internet or to the devices. Snapshot of <code>main</code> on 25 Nov 2026.</p>
+    <p class="lede">Three Docker deployments on a closed network. Collectors touch the devices. Monicomm holds the data, the UI and the local AI, with no internet and a firewall between it and the devices. Snapshot of <code>main</code> on 25 Nov 2026, after PR #2 (collector servers).</p>
   </header>
 
   <!-- 1. Architecture -->
   <section>
     <h2>Where data flows</h2>
-    <p>Device data enters through the two collector servers, crosses into Monicomm over mutual TLS and ends up in Postgres. The technician only ever talks to <code>web</code>. The one path back toward the devices is the configurator call, and it carries human-approved changes only.</p>
+    <p>Device data enters through the two collector servers, crosses into Monicomm over mutual TLS and ends up in Postgres. Users only ever talk to <code>web</code>. A path back toward the devices, the configurator for human-approved changes, is planned for phase F and not built.</p>
     <figure>
       <div class="scroll">
-        <svg viewBox="0 0 1000 600" role="img" aria-label="Network devices send syslog and traps to the syslog and SNMP servers on the management network. Those forward events over mTLS 6000 to Monicomm's ingest, then queue, worker and database. The technician's browser reaches web, which proxies to api. api reads the database and calls the local LLM. api sends approved changes to the SNMP server's configurator over mTLS 8443.">
+        <svg viewBox="0 0 1000 600" role="img" aria-label="Network devices send syslog to moni-syslog and traps to moni-snmp, which also polls them with SNMPv3. Both forward events over mTLS 6000 to Monicomm's ingest, served by dev-ingest for now, then queue, worker and database. The user's browser reaches web, which proxies to api. api reads the database and calls the local LLM. A planned, unbuilt path sends approved changes from api to the SNMP server's configurator on 8443.">
           <defs>
             <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
             <marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--primary)"/></marker>
@@ -136,10 +136,10 @@
 
           <!-- zones -->
           <rect class="zone" x="12" y="36" width="530" height="446" rx="14"/>
-          <text class="zl" x="28" y="60">Management network · the only place with a route to devices</text>
+          <text class="zl" x="28" y="60">Device subnet 192.168.108.0/24 · collectors use host networking</text>
           <rect class="zone-air" x="596" y="36" width="392" height="552" rx="14"/>
-          <text class="zl-air" x="612" y="60">Monicomm host · internal Docker network</text>
-          <text class="zl-air" x="612" y="576">No internet · no route to devices · no device credentials</text>
+          <text class="zl-air" x="612" y="60">moni-app · .140 · internal Docker network</text>
+          <text class="zl-air" x="612" y="580">No internet · firewall blocks SNMP, SSH, NETCONF</text>
 
           <!-- devices -->
           <rect class="node" x="30" y="212" width="130" height="124" rx="10"/>
@@ -150,26 +150,28 @@
 
           <!-- syslog server -->
           <rect class="node" x="290" y="80" width="230" height="130" rx="10"/>
-          <text class="nt" x="306" y="104">Syslog server</text>
-          <text class="ns" x="306" y="122">own VM · own compose</text>
-          <text class="ni" x="306" y="148">Vector: receive + parse</text>
-          <text class="ni" x="306" y="168">raw archive, 1 year</text>
+          <text class="nt" x="306" y="104">Syslog server · moni-syslog</text>
+          <text class="ns" x="306" y="122">.141 · own VM · own compose</text>
+          <text class="ni" x="306" y="148">Vector 0.61: UDP/TCP 514</text>
+          <text class="ni" x="306" y="168">raw archive per device</text>
           <text class="ni" x="306" y="188">disk buffer, then ship</text>
 
           <!-- snmp server -->
           <rect class="node" x="290" y="262" width="230" height="200" rx="10"/>
-          <text class="nt" x="306" y="286">SNMP server</text>
-          <text class="ns" x="306" y="304">own VM · holds device credentials</text>
-          <text class="ni" x="306" y="330">snmptrapd: traps, informs</text>
-          <text class="ni" x="306" y="350">Telegraf: SNMPv3 polling</text>
-          <text class="ni" x="306" y="370">Vector shipper + buffer</text>
-          <text class="ni" x="306" y="390">discovery for Mapper</text>
-          <text class="ni" x="306" y="418" style="fill: var(--accent); font-weight: 600">configurator</text>
-          <text class="ns" x="306" y="436">preview, apply, rollback</text>
+          <text class="nt" x="306" y="286">SNMP server · moni-snmp</text>
+          <text class="ns" x="306" y="304">.142 · holds device credentials</text>
+          <text class="ni" x="306" y="328">trapd (net-snmp): 162</text>
+          <text class="ni" x="306" y="346">poller: Telegraf 1.40, SNMPv3</text>
+          <text class="ni" x="306" y="364">shipper: Vector 0.61 + buffer</text>
+          <text class="ns" x="306" y="382">targets: inventory/devices.csv</text>
+          <text class="ns" x="306" y="400">snmpq: read-only queries</text>
+          <rect x="300" y="412" width="210" height="40" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text class="ni" x="310" y="429" style="fill: var(--accent); font-weight: 600">configurator</text>
+          <text class="ns" x="310" y="445">phase F · not built yet</text>
 
           <!-- browser -->
           <rect class="node" x="290" y="506" width="230" height="56" rx="10"/>
-          <text class="nt" x="306" y="530">Technician browser</text>
+          <text class="nt" x="306" y="530">User browser (IT team)</text>
           <text class="ns" x="306" y="548">any PC on the closed network</text>
 
           <!-- devices <-> collectors -->
@@ -188,7 +190,7 @@
 
           <!-- api -> configurator (approved writes) -->
           <path class="edge-write" d="M614 418 H522" marker-end="url(#ahw)"/>
-          <text class="el-write" x="567" y="410" text-anchor="middle">mTLS 8443</text>
+          <text class="el-write" x="567" y="410" text-anchor="middle">8443 · planned</text>
           <text class="el-write" x="567" y="434" text-anchor="middle">approved only</text>
 
           <!-- browser -> web -->
@@ -198,7 +200,7 @@
           <!-- monicomm services -->
           <rect class="node" x="616" y="78" width="150" height="52" rx="10"/>
           <text class="nt" x="691" y="100" text-anchor="middle">ingest</text>
-          <text class="ns" x="691" y="118" text-anchor="middle">Vector</text>
+          <text class="ns" x="691" y="118" text-anchor="middle">dev-ingest for now</text>
 
           <rect class="node" x="616" y="178" width="150" height="52" rx="10"/>
           <text class="nt" x="691" y="200" text-anchor="middle">queue</text>
@@ -245,10 +247,26 @@
       <div class="legend">
         <span><i class="sw"></i>plain traffic inside a zone</span>
         <span><i class="sw sec"></i>crosses into Monicomm, mutual TLS</span>
-        <span><i class="sw write"></i>the only path toward devices: approved changes</span>
+        <span><i class="sw write"></i>planned, not built: approved device changes (phase F)</span>
       </div>
-      <figcaption>Ports are from <code>docker-compose.yml</code> and <code>docs/plans/syslog-snmp-deployment.md</code>. Example addresses: syslog 10.10.10.51, SNMP 10.10.10.52, Monicomm 10.20.0.10.</figcaption>
+      <figcaption>Ports and versions are from <code>collector/*/docker-compose.yml</code> and <code>docs/runbooks/collector-servers-setup.md</code>. For now all three VMs share 192.168.108.0/24, and host firewall rules on <code>moni-app</code> keep Monicomm away from the devices. A separate VLAN comes later. Until Monicomm's real <code>ingest</code> exists, <code>collector/dev-ingest</code> receives on 6000 and writes JSON files.</figcaption>
     </figure>
+  </section>
+
+  <!-- 1b. Event contract -->
+  <section>
+    <h2>What crosses into Monicomm</h2>
+    <p>Three event types, defined in <code>collector/README.md</code>. Each is a JSON object with <code>schema</code>, <code>kind</code> and <code>collector_id</code>. A schema change means a new version (<code>.v2</code>). Vendor parsing and MIB name translation happen in Monicomm, not on the collectors.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Schema</th><th>From</th><th>Main fields</th></tr></thead>
+        <tbody>
+          <tr><td class="v">monicomm.syslog.v1</td><td>moni-syslog</td><td><code>source_ip</code>, <code>received_at</code>, <code>raw</code> line, parsed <code>syslog</code> header, or <code>parse_error</code></td></tr>
+          <tr><td class="v">monicomm.trap.v1</td><td>moni-snmp · trapd</td><td><code>trap_oid</code>, <code>device_uptime</code>, <code>varbinds</code> as numeric OIDs</td></tr>
+          <tr><td class="v">monicomm.snmp_metric.v1</td><td>moni-snmp · poller</td><td><code>measurement</code> (interfaces, LLDP/CDP, ARP, BGP, OSPF…), <code>tags</code>, <code>fields</code>, <code>polled_at</code></td></tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <!-- 2. Request flow -->
@@ -335,17 +353,21 @@
           <tr><td>Models</td><td>Qwen / Llama / Mistral for chat, nomic-embed or bge-m3 for embeddings</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
 
           <tr class="group"><td colspan="4">Collectors · separate deployments</td></tr>
-          <tr><td>Ingest into Monicomm</td><td>Vector, mutual TLS on 6000</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
-          <tr><td>Syslog server</td><td>Vector: receive, archive, buffer, forward</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
-          <tr><td>SNMP server</td><td>net-snmp snmptrapd, Telegraf, Vector shipper</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
-          <tr><td>Configurator</td><td>Python with pysnmp, ncclient, scrapli, HTTPS API on 8443</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
+          <tr><td>Syslog server</td><td>Vector: UDP/TCP 514, raw archive, disk buffer, forward. TLS 6514 off until decided</td><td class="v">0.61.0</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>SNMP server</td><td>trapd (net-snmp), poller (Telegraf, SNMPv3), shipper (Vector), <code>snmpq</code></td><td class="v">1.40.2 · 0.61.0</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Certificates</td><td>Internal CA and mTLS certs from <code>collector/pki/make-certs.sh</code></td><td class="v">—</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Test receiver</td><td><code>dev-ingest</code>: Vector on 6000 that writes JSON files</td><td class="v">0.61.0</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Ingest into Monicomm</td><td>Vector in the main stack, mutual TLS on 6000</td><td class="v">—</td><td><span class="pill decided">Decided</span></td></tr>
+          <tr><td>Target list</td><td><code>inventory/devices.csv</code> now, Monicomm inventory API later</td><td class="v">—</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Configurator</td><td>Python with pysnmp, ncclient, scrapli, HTTPS API on 8443. Phase F, needs an ADR and a security review</td><td class="v">—</td><td><span class="pill proposed">Proposed</span></td></tr>
 
           <tr class="group"><td colspan="4">Quality and delivery</td></tr>
           <tr><td>Python checks</td><td>ruff (format + lint), pytest with an 80% coverage gate</td><td class="v">0.8.6 · 8.3.4</td><td><span class="pill built">Built</span></td></tr>
           <tr><td>Web checks</td><td>prettier, eslint, stylelint (blocks raw colors), vitest + Testing Library</td><td class="v">3.4 · 9.19 · 16.14 · 3.0</td><td><span class="pill built">Built</span></td></tr>
           <tr><td>Air-gap guard</td><td><code>check_airgap.py</code> + Docker test that the API can't reach out</td><td class="v">—</td><td><span class="pill built">Built</span></td></tr>
           <tr><td>CI</td><td>GitHub Actions, four jobs, plus a required pre-push hook</td><td class="v">—</td><td><span class="pill built">Built</span></td></tr>
-          <tr><td>Offline delivery</td><td><code>docker save</code> bundles + models + SHA-256 checksums</td><td class="v">—</td><td><span class="pill decided">Decided</span></td></tr>
+          <tr><td>Collector delivery</td><td><code>build-collector-bundle.sh</code> and <code>install-collector.sh</code>, end-to-end test in <code>collector/test/e2e.sh</code></td><td class="v">—</td><td><span class="pill built">Built</span></td></tr>
+          <tr><td>Monicomm delivery</td><td><code>docker save</code> bundle + models + SHA-256 checksums</td><td class="v">—</td><td><span class="pill decided">Decided</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -367,7 +389,7 @@
 
   <div class="note">
     <h3>Rules to settle</h3>
-    <p>The collector plan gives the SNMP server a configurator that can change devices after a human approves. CLAUDE.md rule 3 still says never write code that changes device config. The team needs to pick one and update the other file. Branch protection on <code>main</code> also isn't on yet, so step 3 doesn't block a merge until someone sets it in GitHub.</p>
+    <p>The configurator isn't built yet, but the plan still says it will change devices after a human approves, and CLAUDE.md rule 3 says never write code that changes device config. Settle this in the phase F ADR. Branch protection on <code>main</code> also isn't on yet, so step 3 doesn't block a merge until someone sets it in GitHub.</p>
   </div>
 </div>
 </body>
