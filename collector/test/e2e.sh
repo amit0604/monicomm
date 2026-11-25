@@ -164,4 +164,9 @@ docker start "$P-ingest" >/dev/null
 wait_for 120 "$WORK/ingest-data/$day/syslog.jsonl" "BUFFER-TEST" || fail "buffered event was not delivered after ingest came back"
 pass "event sent while ingest was down was delivered after restart"
 
+if docker logs "$P-ingest" 2>&1 | grep -q "Failed to render template"; then
+  fail "dev-ingest dropped events (template error: an event without the expected fields)"
+fi
+pass "dev-ingest wrote every event without template errors"
+
 echo "ALL PASSED"

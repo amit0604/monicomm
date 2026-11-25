@@ -1,0 +1,53 @@
+#!/bin/sh
+# moni-sim: make network events on a Monicomm lab node, in Cisco or Junos style.
+#   moni-sim down <port1-4>     link down (real ifOperStatus change -> linkDown inform + syslog)
+#   moni-sim up <port1-4>       link up
+#   moni-sim flap <port1-4>     down, wait 5 s, up
+#   moni-sim config             "configuration changed" syslog
+#   moni-sim login-fail         failed login syslog
+#   moni-sim random             one random event (used by the chatter timer)
+set -eu
+. /etc/moni-node.conf
+
+ifindex() { cat "/sys/class/net/$1/ifindex"; }
+
+link_msg() { # $1 port, $2 up|down
+  if [ "$STYLE" = junos ]; then
+    if [ "$2" = down ]; then st="down(2)"; tag=SNMP_TRAP_LINK_DOWN; else st="up(1)"; tag=SNMP_TRAP_LINK_UP; fi
+    logger -p daemon.warning -t mib2d "$tag: ifIndex $(ifindex "$1"), ifAdminStatus up(1), ifOperStatus $st, ifName $1"
+  else
+    logger -p local7.err -t "$NODE_NAME" "%LINK-3-UPDOWN: Interface $1, changed state to $2"
+    logger -p local7.notice -t "$NODE_NAME" "%LINEPROTO-5-UPDOWN: Line protocol on Interface $1, changed state to $2"
+  fi
+}
+
+link() { # $1 port, $2 up|down
+  case "$1" in port1|port2|port3|port4) ;; *) echo "port must be port1..port4" >&2; exit 1 ;; esac
+  ip link set "$1" "$2"
+  link_msg "$1" "$2"
+}
+
+case "${1:-}" in
+  down|up) link "${2:-port1}" "$1" ;;
+  flap) link "${2:-port1}" down; sleep 5; link "${2:-port1}" up ;;
+  config)
+    if [ "$STYLE" = junos ]; then
+      logger -p auth.notice -t mgd "UI_COMMIT: User 'admin' requested 'commit' operation (comment: lab change)"
+    else
+      logger -p local7.notice -t "$NODE_NAME" "%SYS-5-CONFIG_I: Configured from console by admin on vty0 (10.100.102.20)"
+    fi ;;
+  login-fail)
+    if [ "$STYLE" = junos ]; then
+      logger -p auth.warning -t sshd "SSHD_LOGIN_FAILED: Login failed for user 'admin' from host '10.100.102.99'"
+    else
+      logger -p local7.warning -t "$NODE_NAME" "%SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: admin] [Source: 10.100.102.99] [localport: 22] [Reason: Login Authentication Failed]"
+    fi ;;
+  random)
+    n=$(( $(od -An -N1 -tu1 /dev/urandom) % 4 ))
+    case $n in
+      0|1) "$0" flap "port$(( $(od -An -N1 -tu1 /dev/urandom) % 4 + 1 ))" ;;
+      2) "$0" config ;;
+      3) "$0" login-fail ;;
+    esac ;;
+  *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac
