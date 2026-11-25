@@ -29,6 +29,7 @@ services:
     volumes:
       - pcap-data:/data/pcap   # Chatchup captures + analyses (MONICOMM_PCAP_DATA_DIR)
       - investigator-data:/data/investigator
+      - analyzer-data:/data/analyzer   # change impact reports (MONICOMM_ANALYZER_DATA_DIR)
       # Incident Investigator input: the collectors' dev-ingest directory, read-only.
       # Uncomment and set MONICOMM_INVESTIGATOR_INGEST_DIR=/ingest in .env:
       # - ./dev-ingest:/ingest:ro
@@ -79,3 +80,4 @@ volumes:
   llm-models: {}
   pcap-data: {}
   investigator-data: {}
+  analyzer-data: {}

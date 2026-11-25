@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { AppShell } from "./components/layout/AppShell";
 import { MODULE_LIST } from "./components/layout/modules";
 import { Button, EmptyState } from "./components/ui";
+import { AnalyzerPage } from "./features/analyzer/AnalyzerPage";
 import { ChatPage } from "./features/chat/ChatPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
@@ -35,6 +36,8 @@ function Shell() {
         return <DashboardPage />;
       case "chat":
         return <ChatPage />;
+      case "analyzer":
+        return <AnalyzerPage />;
       case "investigator":
         return <InvestigatorPage selectedId={incidentId} onSelect={setIncidentId} />;
       case "pcap":
