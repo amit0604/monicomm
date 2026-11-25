@@ -14,7 +14,8 @@ from urllib.parse import urlparse
 
 import httpx
 
-from app.core.config import get_settings
+from app.ai import llm_settings
+from app.core.config import Settings
 
 
 class ExternalEndpointError(ValueError):
@@ -47,8 +48,8 @@ def validate_llm_url(url: str) -> str:
     return url
 
 
-def llm_base_url() -> str:
-    return validate_llm_url(get_settings().llm_base_url)
+def llm_base_url(settings: Settings | None = None) -> str:
+    return validate_llm_url((settings or llm_settings.current()).llm_base_url)
 
 
 # dev-only, see module docstring
@@ -56,14 +57,17 @@ GEMINI_HOST = "https://generativelanguage.googleapis.com"  # airgap: allow
 GEMINI_URL = GEMINI_HOST + "/v1beta/models/{model}:generateContent"
 
 
-async def chat(messages: list[dict]) -> str:
-    """Send a chat to the configured model and return the reply text."""
-    settings = get_settings()
+async def chat(messages: list[dict], settings: Settings | None = None) -> str:
+    """Send a chat to the configured model and return the reply text.
+
+    `settings` is only for the Admin page, to test a connection before saving it.
+    """
+    settings = settings or llm_settings.current()
     if settings.llm_provider == "gemini":
-        return await _gemini_chat(messages)
+        return await _gemini_chat(messages, settings)
     if settings.llm_provider != "ollama":
         raise LLMUnavailable(f"Unknown LLM provider {settings.llm_provider!r}")
-    url = f"{llm_base_url()}/api/chat"  # guard runs before any request
+    url = f"{llm_base_url(settings)}/api/chat"  # guard runs before any request
     body = {
         "model": settings.llm_model,
         "messages": messages,
@@ -79,8 +83,7 @@ async def chat(messages: list[dict]) -> str:
         raise LLMUnavailable(f"LLM call failed: {e}") from e
 
 
-async def _gemini_chat(messages: list[dict]) -> str:
-    settings = get_settings()
+async def _gemini_chat(messages: list[dict], settings: Settings) -> str:
     if settings.env != "dev":
         raise ExternalEndpointError("The gemini provider is dev-only. Monicomm is air-gapped.")
     if not settings.gemini_api_key:

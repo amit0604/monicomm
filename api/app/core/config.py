@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     llm_provider: str = "ollama"
     gemini_api_key: str = ""  # local .env only, never in git
     gemini_model: str = "gemini-2.5-flash"
+    llm_settings_file: str = ".env.llm.json"  # what the Admin page saved; dev login only
+    # "none" = no login; "local" = users in users_file, works on the closed network
+    auth_provider: str = "none"
+    users_file: str = "/data/auth/users.json"
+    cookie_secure: bool = False  # true when the UI is served over HTTPS
     investigator_ingest_dir: str = ""  # empty = listener off
     investigator_data_dir: str = "/data/investigator"
     investigator_window_s: int = 120

@@ -9,3 +9,6 @@ export const MODULES = [
 ] as const;
 
 export type ModuleId = (typeof MODULES)[number]["id"];
+
+/** A page of the app: a module, or the admin page (not a module). */
+export type PageId = ModuleId | "admin";

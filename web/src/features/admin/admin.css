@@ -1,0 +1,51 @@
+/* Admin page layout. Tokens only (see styles/tokens.css). */
+
+.admin {
+  max-width: 720px;
+  padding: var(--space-4);
+}
+
+.admin__form,
+.admin__fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin__fields {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.admin__control {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.admin__list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.admin__list li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  overflow-wrap: anywhere;
+  border-block-end: 1px solid var(--border);
+}

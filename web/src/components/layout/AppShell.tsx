@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Theme } from "../../lib/theme";
-import type { ModuleId } from "../../modules";
+import type { PageId } from "../../modules";
 import { SideNav } from "./SideNav";
 import { TopBar } from "./TopBar";
 import "./layout.css";
@@ -14,10 +14,10 @@ export function AppShell({
   onToggleTheme,
   children,
 }: {
-  active: ModuleId;
+  active: PageId;
   title: string;
   theme: Theme;
-  onNavigate: (id: ModuleId) => void;
+  onNavigate: (id: PageId) => void;
   onToggleTheme: () => void;
   children: ReactNode;
 }) {

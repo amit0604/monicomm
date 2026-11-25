@@ -5,6 +5,9 @@ import { AppShell } from "./components/layout/AppShell";
 import { MODULE_LIST } from "./components/layout/modules";
 import { Button, EmptyState } from "./components/ui";
 import { AnalyzerPage } from "./features/analyzer/AnalyzerPage";
+import { AdminPage } from "./features/admin/AdminPage";
+import { AdminUsers } from "./features/admin/AdminUsers";
+import { AuthGate } from "./features/auth/AuthGate";
 import { ChatPage } from "./features/chat/ChatPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
@@ -20,6 +23,7 @@ function Shell() {
   const { t, dir } = useI18n();
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const module = MODULE_LIST.find((m) => m.id === route) ?? MODULE_LIST[1];
+  const title = t(route === "admin" ? "nav.admin" : module.label);
 
   const openIncident = useCallback(
     (id: string) => {
@@ -32,6 +36,13 @@ function Shell() {
 
   function page() {
     switch (route) {
+      case "admin":
+        return (
+          <>
+            <AdminPage />
+            <AdminUsers />
+          </>
+        );
       case "dashboard":
         return <DashboardPage />;
       case "chat":
@@ -61,7 +72,7 @@ function Shell() {
     <>
       <AppShell
         active={route}
-        title={t(module.label)}
+        title={title}
         theme={theme}
         onNavigate={navigate}
         onToggleTheme={toggle}
@@ -73,10 +84,17 @@ function Shell() {
   );
 }
 
-export default function App() {
+/** login=false is for tests of the shell itself. */
+export default function App({ login = false }: { login?: boolean }) {
   return (
     <I18nProvider>
-      <Shell />
+      {login ? (
+        <AuthGate>
+          <Shell />
+        </AuthGate>
+      ) : (
+        <Shell />
+      )}
     </I18nProvider>
   );
 }

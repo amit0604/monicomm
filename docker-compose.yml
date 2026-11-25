@@ -28,6 +28,7 @@ services:
         condition: service_healthy
     volumes:
       - pcap-data:/data/pcap   # Catchup captures + analyses (MONICOMM_PCAP_DATA_DIR)
+      - auth-data:/data/auth
       - investigator-data:/data/investigator
       - analyzer-data:/data/analyzer   # change impact reports (MONICOMM_ANALYZER_DATA_DIR)
       # Incident Investigator input: the collectors' dev-ingest directory, read-only.
@@ -81,3 +82,4 @@ volumes:
   pcap-data: {}
   investigator-data: {}
   analyzer-data: {}
+  auth-data: {}

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { MODULES, type ModuleId } from "../modules";
+import { MODULES, type PageId } from "../modules";
 
-function parse(hash: string): ModuleId {
+function parse(hash: string): PageId {
   const id = hash.replace(/^#\/?/, "").split("/")[0];
-  return MODULES.some((m) => m.id === id) ? (id as ModuleId) : "chat";
+  if (id === "admin") return id;
+  return MODULES.some((m) => m.id === id) ? (id as PageId) : "chat";
 }
 
 /** Tiny hash router: #/chat, #/mapper ... Enough until the shell needs nested routes. */
 export function useHashRoute() {
-  const [route, setRoute] = useState<ModuleId>(() => parse(window.location.hash));
+  const [route, setRoute] = useState<PageId>(() => parse(window.location.hash));
 
   useEffect(() => {
     const onChange = () => setRoute(parse(window.location.hash));
@@ -17,7 +18,7 @@ export function useHashRoute() {
   }, []);
 
   // Update state right away (hashchange fires asynchronously) and keep the URL shareable.
-  const navigate = useCallback((id: ModuleId) => {
+  const navigate = useCallback((id: PageId) => {
     setRoute(id);
     if (window.location.hash !== `#/${id}`) window.location.hash = `/${id}`;
   }, []);
