@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 export function Panel({
   title,
@@ -12,7 +12,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={className ? `panel ${className}` : 'panel'}>
+    <section className={className ? `panel ${className}` : "panel"}>
       {(title || actions) && (
         <header className="panel__header">
           {title && <h2 className="panel__title">{title}</h2>}

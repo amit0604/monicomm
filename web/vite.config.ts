@@ -1,16 +1,17 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    // The API runs as its own container; in dev we proxy to it so the UI never needs CORS.
-    proxy: { '/api': 'http://localhost:8000' },
+    // In dev, forward API calls to the local api service
+    proxy: { "/api": "http://localhost:8000" },
   },
   test: {
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    css: false,
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+    css: true,
   },
 });

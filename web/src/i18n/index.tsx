@@ -1,9 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import { en } from './en';
-import type { MessageKey, Messages } from './en';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { en } from "./en";
+import type { MessageKey, Messages } from "./en";
 
-export type Direction = 'ltr' | 'rtl';
+export type Direction = "ltr" | "rtl";
 
 interface Locale {
   code: string;
@@ -13,7 +13,7 @@ interface Locale {
 
 // Register new languages here. Hebrew comes later: { code: 'he', dir: 'rtl', messages: he }.
 const LOCALES: Record<string, Locale> = {
-  en: { code: 'en', dir: 'ltr', messages: en },
+  en: { code: "en", dir: "ltr", messages: en },
 };
 
 interface I18nValue {
@@ -25,7 +25,13 @@ interface I18nValue {
 
 const I18nContext = createContext<I18nValue | null>(null);
 
-export function I18nProvider({ locale = 'en', children }: { locale?: string; children: ReactNode }) {
+export function I18nProvider({
+  locale = "en",
+  children,
+}: {
+  locale?: string;
+  children: ReactNode;
+}) {
   const current = LOCALES[locale] ?? LOCALES.en;
   // The direction can be flipped on its own so we can test RTL layout before the Hebrew strings exist.
   const [dir, setDir] = useState<Direction>(current.dir);
@@ -39,7 +45,8 @@ export function I18nProvider({ locale = 'en', children }: { locale?: string; chi
     (key: MessageKey, vars?: Record<string, string | number>) => {
       let text: string = current.messages[key] ?? key;
       if (vars) {
-        for (const [name, value] of Object.entries(vars)) text = text.replaceAll(`{${name}}`, String(value));
+        for (const [name, value] of Object.entries(vars))
+          text = text.replaceAll(`{${name}}`, String(value));
       }
       return text;
     },
@@ -52,6 +59,6 @@ export function I18nProvider({ locale = 'en', children }: { locale?: string; chi
 
 export function useI18n() {
   const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error('useI18n must be used inside <I18nProvider>');
+  if (!ctx) throw new Error("useI18n must be used inside <I18nProvider>");
   return ctx;
 }

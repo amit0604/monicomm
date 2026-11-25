@@ -1,19 +1,19 @@
 // Read-only tools the assistant may call. Same names and shapes as the future MCP / api tools
 // (PROJECT.md 3, AI rule 2). Nothing here can change a device.
-import type { Source } from '../types';
-import { ALERTS, CONFIG_CHANGES, DEVICES, HOSTS, INTERFACES, LOGS } from './network';
-import type { Alert, ConfigChange, Device, Host, Interface, LogLine } from './network';
+import type { Source } from "../types";
+import { ALERTS, CONFIG_CHANGES, DEVICES, HOSTS, INTERFACES, LOGS } from "./network";
+import type { Alert, ConfigChange, Device, Host, Interface, LogLine } from "./network";
 
 export const READ_ONLY_TOOLS = [
-  'get_device',
-  'get_interface',
-  'list_interfaces',
-  'lookup_knowledge_base',
-  'query_logs',
-  'list_alerts',
-  'get_config_changes',
-  'find_host',
-  'analyze_impact',
+  "get_device",
+  "get_interface",
+  "list_interfaces",
+  "lookup_knowledge_base",
+  "query_logs",
+  "list_alerts",
+  "get_config_changes",
+  "find_host",
+  "analyze_impact",
 ] as const;
 
 export function getDevice(name: string): Device | undefined {
@@ -22,7 +22,8 @@ export function getDevice(name: string): Device | undefined {
 
 export function getInterface(device: string, name: string): Interface | undefined {
   return INTERFACES.find(
-    (i) => i.device.toLowerCase() === device.toLowerCase() && normalizeIf(i.name) === normalizeIf(name),
+    (i) =>
+      i.device.toLowerCase() === device.toLowerCase() && normalizeIf(i.name) === normalizeIf(name),
   );
 }
 
@@ -33,7 +34,9 @@ export function findInterface(name: string): Interface | undefined {
 
 export function queryLogs(device: string, contains?: string): LogLine[] {
   return LOGS.filter(
-    (l) => l.device === device && (!contains || l.message.toLowerCase().includes(contains.toLowerCase())),
+    (l) =>
+      l.device === device &&
+      (!contains || l.message.toLowerCase().includes(contains.toLowerCase())),
   );
 }
 
@@ -58,22 +61,28 @@ export function deviceSource(device: string): Source {
   const d = getDevice(device);
   return {
     id: `device:${device}`,
-    kind: 'device',
+    kind: "device",
     label: device,
     detail: d ? `${d.vendor} ${d.model} · ${d.mgmtIp}` : undefined,
   };
 }
 
 export function logSource(line: LogLine): Source {
-  return { id: `log:${line.device}:${line.time}`, kind: 'log', label: `syslog ${line.device} ${line.time}`, detail: line.message };
+  return {
+    // Several lines can share a second, so the message is part of the identity.
+    id: `log:${line.device}:${line.time}:${line.message}`,
+    kind: "log",
+    label: `syslog ${line.device} ${line.time}`,
+    detail: line.message,
+  };
 }
 
 /** "Gi1/0/5", "gi 1/0/5" and "GigabitEthernet1/0/5" are the same port. */
 export function normalizeIf(name: string): string {
   return name
     .toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/^gigabitethernet/, 'gi')
-    .replace(/^tengigabitethernet/, 'te')
-    .replace(/^port-channel/, 'po');
+    .replace(/\s+/g, "")
+    .replace(/^gigabitethernet/, "gi")
+    .replace(/^tengigabitethernet/, "te")
+    .replace(/^port-channel/, "po");
 }

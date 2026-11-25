@@ -1,13 +1,13 @@
-import { Bot, ServerCog } from 'lucide-react';
-import { Tag } from '../../components/ui';
-import { useI18n } from '../../i18n';
-import { ActionCard } from './parts/ActionCard';
-import { CodeBlock } from './parts/CodeBlock';
-import { DataTable } from './parts/DataTable';
-import { RichText } from './parts/RichText';
-import { Sources } from './parts/Sources';
-import { ToolCall } from './parts/ToolCall';
-import type { ChatMessage, ProposedAction } from './types';
+import { Bot, ServerCog } from "lucide-react";
+import { Tag } from "../../components/ui";
+import { useI18n } from "../../i18n";
+import { ActionCard } from "./parts/ActionCard";
+import { CodeBlock } from "./parts/CodeBlock";
+import { DataTable } from "./parts/DataTable";
+import { RichText } from "./parts/RichText";
+import { Sources } from "./parts/Sources";
+import { ToolCall } from "./parts/ToolCall";
+import type { ChatMessage, ProposedAction } from "./types";
 
 export interface ActionHandlers {
   approve: (id: string) => void;
@@ -15,7 +15,7 @@ export interface ActionHandlers {
   rollback: (id: string) => void;
 }
 
-const timeFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const timeFormat = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 
 export function MessageBubble({
   message,
@@ -27,26 +27,26 @@ export function MessageBubble({
   handlers: ActionHandlers;
 }) {
   const { t } = useI18n();
-  const isUser = message.role === 'user';
+  const isUser = message.role === "user";
   const time = timeFormat.format(message.createdAt);
 
   return (
     <li className={`msg msg--${message.role}`}>
       {!isUser && (
         <span className="msg__avatar" aria-hidden="true">
-          {message.role === 'assistant' ? <Bot size={18} /> : <ServerCog size={18} />}
+          {message.role === "assistant" ? <Bot size={18} /> : <ServerCog size={18} />}
         </span>
       )}
       <div className="msg__bubble">
         {!isUser && (
           <div className="msg__author">
-            <span>{message.role === 'assistant' ? t('chat.title') : t('chat.configurator')}</span>
-            {message.role === 'assistant' && <Tag>{t('chat.aiTag')}</Tag>}
+            <span>{message.role === "assistant" ? t("chat.title") : t("chat.configurator")}</span>
+            {message.role === "assistant" && <Tag>{t("chat.aiTag")}</Tag>}
           </div>
         )}
         {message.meta && (
           <p className="msg__meta" title={message.meta.reason}>
-            {t('chat.meta', {
+            {t("chat.meta", {
               engine: message.meta.engine,
               intent: message.meta.intent,
               confidence: message.meta.confidence,
@@ -57,15 +57,24 @@ export function MessageBubble({
         <div className="msg__body">
           {message.parts.map((part, i) => {
             switch (part.type) {
-              case 'text':
+              case "text":
                 return <RichText key={i} text={part.text} />;
-              case 'tool_call':
+              case "tool_call":
                 return <ToolCall key={part.id} part={part} />;
-              case 'table':
-                return <DataTable key={i} title={part.title} columns={part.columns} rows={part.rows} />;
-              case 'code':
-                return <CodeBlock key={i} title={part.title} language={part.language} content={part.content} />;
-              case 'action': {
+              case "table":
+                return (
+                  <DataTable key={i} title={part.title} columns={part.columns} rows={part.rows} />
+                );
+              case "code":
+                return (
+                  <CodeBlock
+                    key={i}
+                    title={part.title}
+                    language={part.language}
+                    content={part.content}
+                  />
+                );
+              case "action": {
                 const action = actions[part.actionId];
                 return action ? (
                   <ActionCard
@@ -80,7 +89,7 @@ export function MessageBubble({
             }
           })}
           {message.streaming && message.parts.length === 0 && (
-            <span className="typing" aria-label={t('chat.typing')}>
+            <span className="typing" aria-label={t("chat.typing")}>
               <span />
               <span />
               <span />

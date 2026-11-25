@@ -16,9 +16,9 @@
   font-weight: var(--weight-semibold);
   cursor: pointer;
   transition:
-    background-color var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out),
-    opacity var(--duration-fast) var(--ease-out);
+    background-color var(--motion-fast),
+    border-color var(--motion-fast),
+    opacity var(--motion-fast);
 }
 
 .btn:disabled {
@@ -76,54 +76,6 @@
   background: color-mix(in srgb, var(--critical-strong) 88%, var(--text));
 }
 
-/* StatusPill: always color + icon + text */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding-block: 2px;
-  padding-inline: var(--space-2);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: var(--weight-semibold);
-  white-space: nowrap;
-}
-
-.pill svg {
-  flex: none;
-}
-
-.pill--ok {
-  background: var(--ok-soft);
-  color: var(--ok-strong);
-}
-
-.pill--warning {
-  background: var(--warning-soft);
-  color: var(--warning-strong);
-}
-
-.pill--critical {
-  background: var(--critical-soft);
-  color: var(--critical-strong);
-}
-
-.pill--info {
-  background: var(--info-soft);
-  color: var(--info-strong);
-}
-
-.pill--neutral {
-  background: var(--neutral-soft);
-  color: var(--neutral-strong);
-}
-
-.pill--accent {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-}
-
 /* Tag */
 .tag {
   display: inline-flex;
@@ -144,14 +96,6 @@
 }
 
 /* Panel */
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1);
-  padding: var(--space-4);
-}
-
 .panel__header {
   display: flex;
   align-items: center;

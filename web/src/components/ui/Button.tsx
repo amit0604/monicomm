@@ -1,23 +1,29 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes } from "react";
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
-  size?: 'md' | 'sm';
+  size?: "md" | "sm";
   iconOnly?: boolean;
 }
 
 export function Button({
-  variant = 'secondary',
-  size = 'md',
+  variant = "secondary",
+  size = "md",
   iconOnly = false,
   className,
-  type = 'button',
+  type = "button",
   ...rest
 }: ButtonProps) {
-  const classes = ['btn', `btn--${variant}`, size === 'sm' && 'btn--sm', iconOnly && 'btn--icon', className]
+  const classes = [
+    "btn",
+    `btn--${variant}`,
+    size === "sm" && "btn--sm",
+    iconOnly && "btn--icon",
+    className,
+  ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
   return <button type={type} className={classes} {...rest} />;
 }

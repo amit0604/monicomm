@@ -1,8 +1,4 @@
-import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import "@testing-library/jest-dom/vitest";
 
-afterEach(() => cleanup());
-
-// jsdom has no layout; the chat list calls scrollTo.
+// jsdom has no layout; the chat message list calls scrollTo.
 Element.prototype.scrollTo = function scrollTo() {};

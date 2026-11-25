@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-export type Theme = 'light' | 'dark';
+export type Theme = "light" | "dark";
 
-const STORAGE_KEY = 'monicomm.theme';
+const STORAGE_KEY = "monicomm.theme";
 
 function systemTheme(): Theme {
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function storedTheme(): Theme | null {
   try {
     const value = localStorage.getItem(STORAGE_KEY);
-    return value === 'light' || value === 'dark' ? value : null;
+    return value === "light" || value === "dark" ? value : null;
   } catch {
     return null;
   }
@@ -27,7 +27,7 @@ export function useTheme() {
 
   const toggle = useCallback(() => {
     setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
+      const next = prev === "dark" ? "light" : "dark";
       try {
         localStorage.setItem(STORAGE_KEY, next);
       } catch {

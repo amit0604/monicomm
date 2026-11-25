@@ -1,10 +1,10 @@
-import { Check, Copy } from 'lucide-react';
-import { useState } from 'react';
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
 
 function lineClass(line: string, language: string) {
-  if (language !== 'diff') return undefined;
-  if (line.startsWith('+')) return 'code__line--add';
-  if (line.startsWith('-')) return 'code__line--del';
+  if (language !== "diff") return undefined;
+  if (line.startsWith("+")) return "code__line--add";
+  if (line.startsWith("-")) return "code__line--del";
   return undefined;
 }
 
@@ -14,7 +14,7 @@ export function CodeBlock({
   content,
 }: {
   title?: string;
-  language: 'cli' | 'diff' | 'log';
+  language: "cli" | "diff" | "log";
   content: string;
 }) {
   const [copied, setCopied] = useState(false);
@@ -39,10 +39,10 @@ export function CodeBlock({
       </figcaption>
       {/* Commands and configs stay left-to-right even in an RTL layout. */}
       <pre dir="ltr">
-        {content.split('\n').map((line, i) => (
+        {content.split("\n").map((line, i) => (
           <span key={i} className={lineClass(line, language)}>
             {line}
-            {'\n'}
+            {"\n"}
           </span>
         ))}
       </pre>

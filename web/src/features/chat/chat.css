@@ -16,7 +16,7 @@
   padding-inline: var(--space-6);
   background: var(--surface);
   border-block-end: 1px solid var(--border);
-  border-block-start: 4px solid var(--module-chat);
+  border-block-start: 4px solid var(--accent-chat);
 }
 
 .chat__avatar {
@@ -26,11 +26,11 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-pill);
-  background: var(--module-chat);
+  background: var(--accent-chat);
   color: var(--text);
 }
 
-[data-theme='dark'] .chat__avatar {
+[data-theme="dark"] .chat__avatar {
   color: var(--bg);
 }
 
@@ -105,7 +105,7 @@
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-out);
+  transition: background-color var(--motion-fast);
 }
 
 .chat__suggestions button:hover {
@@ -175,7 +175,7 @@
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
-  animation: msg-in var(--duration-base) var(--ease-out);
+  animation: msg-in var(--motion-base);
 }
 
 @keyframes msg-in {
@@ -196,7 +196,7 @@
   width: 32px;
   height: 32px;
   border-radius: var(--radius-pill);
-  background: var(--module-chat);
+  background: var(--accent-chat);
   color: var(--text);
 }
 
@@ -205,7 +205,7 @@
   color: var(--neutral-strong);
 }
 
-[data-theme='dark'] .msg--assistant .msg__avatar {
+[data-theme="dark"] .msg--assistant .msg__avatar {
   color: var(--bg);
 }
 
@@ -392,7 +392,7 @@
   padding-block: var(--space-2);
   padding-inline: var(--space-3);
   border-block-end: 1px solid var(--border);
-  border-inline-start: 4px solid var(--module-chat);
+  border-inline-start: 4px solid var(--accent-chat);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   font-weight: var(--weight-semibold);
@@ -660,7 +660,7 @@
   color: var(--critical-strong);
 }
 
-.impact__warnings svg {
+.impact__warnings li svg {
   flex: none;
   margin-block-start: 1px;
 }

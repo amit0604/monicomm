@@ -1,41 +1,41 @@
-import { AlertTriangle, CheckCircle2, CircleDashed, Info, OctagonAlert, Sparkles } from 'lucide-react';
+import { CircleAlert, CircleCheck, CircleHelp, Info, Sparkles, TriangleAlert } from "lucide-react";
 
-export type Status = 'ok' | 'warning' | 'critical' | 'info' | 'neutral' | 'accent';
+export type Status = "ok" | "warning" | "critical" | "info" | "neutral" | "accent";
 
 const ICONS = {
-  ok: CheckCircle2,
-  warning: AlertTriangle,
-  critical: OctagonAlert,
+  ok: CircleCheck,
+  warning: TriangleAlert,
+  critical: CircleAlert,
   info: Info,
-  neutral: CircleDashed,
+  neutral: CircleHelp,
   accent: Sparkles,
 } as const;
 
-/** Status is never color alone: color + icon + label (PROJECT.md 6A). */
+// Status is always color + icon + text (PROJECT.md section 6A), never color alone.
 export function StatusPill({ status, label }: { status: Status; label: string }) {
   const Icon = ICONS[status];
   return (
-    <span className={`pill pill--${status}`}>
+    <span className={`status-pill status-pill--${status}`} data-status={status}>
       <Icon size={12} aria-hidden="true" />
       {label}
     </span>
   );
 }
 
-/** Syslog severity → status color, per PROJECT.md 6A. */
+/** Syslog severity → status color (PROJECT.md 6A). */
 export function severityToStatus(severity: string): Status {
   switch (severity) {
-    case 'emerg':
-    case 'alert':
-    case 'crit':
-      return 'critical';
-    case 'err':
-    case 'warning':
-      return 'warning';
-    case 'notice':
-    case 'info':
-      return 'info';
+    case "emerg":
+    case "alert":
+    case "crit":
+      return "critical";
+    case "err":
+    case "warning":
+      return "warning";
+    case "notice":
+    case "info":
+      return "info";
     default:
-      return 'neutral';
+      return "neutral";
   }
 }

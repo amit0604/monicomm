@@ -1,10 +1,10 @@
-import { StatusPill } from '../../../components/ui';
-import type { Cell, Column } from '../types';
+import { StatusPill } from "../../../components/ui";
+import type { Cell, Column } from "../types";
 
 function renderCell(cell: Cell | undefined, column: Column) {
   if (cell === undefined) return null;
-  if (typeof cell === 'object') return <StatusPill status={cell.status} label={cell.label} />;
-  if (column.kind === 'mono') return <span className="mono">{cell}</span>;
+  if (typeof cell === "object") return <StatusPill status={cell.status} label={cell.label} />;
+  if (column.kind === "mono") return <span className="mono">{cell}</span>;
   return cell;
 }
 
@@ -25,7 +25,7 @@ export function DataTable({
           <thead>
             <tr>
               {columns.map((c) => (
-                <th key={c.key} scope="col" className={c.kind === 'num' ? 'num' : undefined}>
+                <th key={c.key} scope="col" className={c.kind === "num" ? "num" : undefined}>
                   {c.label}
                 </th>
               ))}
@@ -35,7 +35,7 @@ export function DataTable({
             {rows.map((row, i) => (
               <tr key={i}>
                 {columns.map((c) => (
-                  <td key={c.key} className={c.kind === 'num' ? 'num' : undefined}>
+                  <td key={c.key} className={c.kind === "num" ? "num" : undefined}>
                     {renderCell(row[c.key], c)}
                   </td>
                 ))}

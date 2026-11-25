@@ -1,14 +1,22 @@
-import { Bot, Cpu, Database, FlaskConical, Lock, MessageSquarePlus, ShieldCheck } from 'lucide-react';
-import { useMemo } from 'react';
-import { toast } from 'sonner';
-import { Button, EmptyState, Tag } from '../../components/ui';
-import { useI18n } from '../../i18n';
-import { createMockBackend, SUGGESTIONS } from './backend';
-import type { ChatBackend } from './backend';
-import { Composer } from './Composer';
-import { MessageList } from './MessageList';
-import { useChat } from './useChat';
-import './chat.css';
+import {
+  Bot,
+  Cpu,
+  Database,
+  FlaskConical,
+  Lock,
+  MessageSquarePlus,
+  ShieldCheck,
+} from "lucide-react";
+import { useMemo } from "react";
+import { toast } from "sonner";
+import { Button, EmptyState, Tag } from "../../components/ui";
+import { useI18n } from "../../i18n";
+import { createMockBackend, SUGGESTIONS } from "./backend";
+import type { ChatBackend } from "./backend";
+import { Composer } from "./Composer";
+import { MessageList } from "./MessageList";
+import { useChat } from "./useChat";
+import "./chat.css";
 
 export function ChatPage({ backend: injected }: { backend?: ChatBackend }) {
   const { t } = useI18n();
@@ -18,19 +26,19 @@ export function ChatPage({ backend: injected }: { backend?: ChatBackend }) {
   const handlers = useMemo(
     () => ({
       approve: async (id: string) => {
-        const device = chat.actions[id]?.device.name ?? '';
+        const device = chat.actions[id]?.device.name ?? "";
         const outcome = await chat.approve(id);
-        if (outcome === 'applied') toast.success(t('toast.applied', { device }));
-        if (outcome === 'failed') toast.error(t('action.status.failed'));
+        if (outcome === "applied") toast.success(t("toast.applied", { device }));
+        if (outcome === "failed") toast.error(t("action.status.failed"));
       },
       cancel: (id: string) => {
         chat.cancel(id);
-        toast(t('toast.cancelled'));
+        toast(t("toast.cancelled"));
       },
       rollback: async (id: string) => {
-        const device = chat.actions[id]?.device.name ?? '';
+        const device = chat.actions[id]?.device.name ?? "";
         await chat.rollback(id);
-        toast(t('toast.rolledBack', { device }));
+        toast(t("toast.rolledBack", { device }));
       },
     }),
     [chat, t],
@@ -43,47 +51,51 @@ export function ChatPage({ backend: injected }: { backend?: ChatBackend }) {
           <Bot size={20} />
         </span>
         <div className="chat__heading">
-          <h2>{t('chat.title')}</h2>
+          <h2>{t("chat.title")}</h2>
           <p>
             <ShieldCheck size={14} aria-hidden="true" />
-            {t('chat.subtitle')}
+            {t("chat.subtitle")}
           </p>
         </div>
         <ul className="chat__badges" aria-label="Prototype status">
           <li>
             <Tag muted>
               <FlaskConical size={12} aria-hidden="true" />
-              {t('chat.badge.prototype')}
+              {t("chat.badge.prototype")}
             </Tag>
           </li>
           <li>
             <Tag muted>
               <Database size={12} aria-hidden="true" />
-              {t('chat.badge.mock')}
+              {t("chat.badge.mock")}
             </Tag>
           </li>
           <li>
             <Tag muted>
               <Cpu size={12} aria-hidden="true" />
-              {t('chat.badge.simulated')}
+              {t("chat.badge.simulated")}
             </Tag>
           </li>
           <li>
             <Tag muted>
               <Lock size={12} aria-hidden="true" />
-              {t('chat.badge.readOnly')}
+              {t("chat.badge.readOnly")}
             </Tag>
           </li>
         </ul>
         <Button variant="ghost" onClick={chat.reset} disabled={chat.messages.length === 0}>
           <MessageSquarePlus size={16} aria-hidden="true" />
-          {t('chat.newChat')}
+          {t("chat.newChat")}
         </Button>
       </header>
 
       {chat.messages.length === 0 ? (
         <div className="chat__empty">
-          <EmptyState icon={<Bot size={28} />} title={t('chat.emptyTitle')} body={t('chat.emptyBody')}>
+          <EmptyState
+            icon={<Bot size={28} />}
+            title={t("chat.emptyTitle")}
+            body={t("chat.emptyBody")}
+          >
             <ul className="chat__suggestions">
               {SUGGESTIONS.map((s) => (
                 <li key={s}>

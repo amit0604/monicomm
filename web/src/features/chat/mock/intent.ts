@@ -7,29 +7,36 @@
 // - A demo scenario only runs when the question names the thing it is about (a device, port or IP)
 //   or uses an anchored phrase ("what changed", "active alerts"). A single loose keyword never triggers one.
 // - Follow-ups resolve against the previous reply's topic only (no deeper coreference).
-import { CONCEPTS } from './knowledge';
-import type { Lang } from './knowledge';
-import { DEVICES } from './network';
+import { CONCEPTS } from "./knowledge";
+import type { Lang } from "./knowledge";
+import { DEVICES } from "./network";
 
 export type Intent =
-  | 'TECHNICAL_KNOWLEDGE'
-  | 'NETWORK_INFORMATION'
-  | 'CONFIG_HISTORY'
-  | 'ALERT_INFORMATION'
-  | 'INCIDENT_INFORMATION'
-  | 'IMPACT_INFORMATION'
-  | 'SYSTEM_CAPABILITIES'
-  | 'DATA_PROVENANCE'
-  | 'PERMISSION_QUESTION'
-  | 'FOLLOW_UP'
-  | 'GREETING'
-  | 'OUT_OF_SCOPE'
-  | 'AMBIGUOUS'
-  | 'MIXED'
-  | 'POLICY_VIOLATION';
+  | "TECHNICAL_KNOWLEDGE"
+  | "NETWORK_INFORMATION"
+  | "CONFIG_HISTORY"
+  | "ALERT_INFORMATION"
+  | "INCIDENT_INFORMATION"
+  | "IMPACT_INFORMATION"
+  | "SYSTEM_CAPABILITIES"
+  | "DATA_PROVENANCE"
+  | "PERMISSION_QUESTION"
+  | "FOLLOW_UP"
+  | "GREETING"
+  | "OUT_OF_SCOPE"
+  | "AMBIGUOUS"
+  | "MIXED"
+  | "POLICY_VIOLATION";
 
 /** Existing demo flows a classification may run. */
-export type Scenario = 'port_down' | 'shutdown' | 'wan' | 'config_changes' | 'alerts' | 'host' | 'device_status';
+export type Scenario =
+  | "port_down"
+  | "shutdown"
+  | "wan"
+  | "config_changes"
+  | "alerts"
+  | "host"
+  | "device_status";
 
 export interface Entities {
   device?: string;
@@ -40,7 +47,7 @@ export interface Entities {
 
 export interface Classification {
   intent: Intent;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
   lang: Lang;
   entities: Entities;
   scenario?: Scenario;
@@ -64,27 +71,27 @@ export interface ConversationContext {
 }
 
 const SCENARIO_INTENT: Record<Scenario, Intent> = {
-  port_down: 'INCIDENT_INFORMATION',
-  wan: 'INCIDENT_INFORMATION',
-  shutdown: 'IMPACT_INFORMATION',
-  config_changes: 'CONFIG_HISTORY',
-  alerts: 'ALERT_INFORMATION',
-  host: 'NETWORK_INFORMATION',
-  device_status: 'NETWORK_INFORMATION',
+  port_down: "INCIDENT_INFORMATION",
+  wan: "INCIDENT_INFORMATION",
+  shutdown: "IMPACT_INFORMATION",
+  config_changes: "CONFIG_HISTORY",
+  alerts: "ALERT_INFORMATION",
+  host: "NETWORK_INFORMATION",
+  device_status: "NETWORK_INFORMATION",
 };
 
 // ---------- matchers ----------
 
 const HEB = /[֐-׿]/;
-const HE_PREFIX = '[ובלהמשכ]{0,2}';
+const HE_PREFIX = "[ובלהמשכ]{0,2}";
 
 function escape(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Whole-word, case-insensitive English match. Never a prefix match ("diff" must not match "difference"). */
 function enWord(term: string) {
-  return new RegExp(`(?<![\\w-])${escape(term).replace(/\s+/g, '\\s+')}(?![\\w-])`, 'i');
+  return new RegExp(`(?<![\\w-])${escape(term).replace(/\s+/g, "\\s+")}(?![\\w-])`, "i");
 }
 
 /** Hebrew stem with optional attached prefixes (ל-נתב, והמתג). \b doesn't work for Hebrew letters in JS. */
@@ -94,8 +101,12 @@ function heWord(stem: string) {
 
 const any = (text: string, patterns: RegExp[]) => patterns.some((p) => p.test(text));
 
-const DEVICE_RE = new RegExp(`(?<![\\w-])(${DEVICES.map((d) => escape(d.name)).join('|')})(?![\\w-])`, 'i');
-const IF_RE = /(?<![\w-])((?:gi(?:gabitethernet)?|te(?:ngigabitethernet)?|xe|ge|et|po(?:rt-channel)?)-?\d+(?:\/\d+){1,3})(?![\w/])/i;
+const DEVICE_RE = new RegExp(
+  `(?<![\\w-])(${DEVICES.map((d) => escape(d.name)).join("|")})(?![\\w-])`,
+  "i",
+);
+const IF_RE =
+  /(?<![\w-])((?:gi(?:gabitethernet)?|te(?:ngigabitethernet)?|xe|ge|et|po(?:rt-channel)?)-?\d+(?:\/\d+){1,3})(?![\w/])/i;
 const IP_RE = /(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])/;
 
 const POLICY_VIOLATION = [
@@ -120,7 +131,8 @@ const POLICY_VIOLATION = [
   /בלי אישור/,
 ];
 
-const GREETING = /^(hi|hello|hey|good (morning|afternoon|evening)|thanks|thank you|thx|cheers|ok(ay)?|great|cool|שלום|היי|הי|תודה( רבה)?|בוקר טוב|ערב טוב|צהריים טובים|מעולה|אחלה)[\s!.,🙂👍]*$/iu;
+const GREETING =
+  /^(hi|hello|hey|good (morning|afternoon|evening)|thanks|thank you|thx|cheers|ok(ay)?|great|cool|שלום|היי|הי|תודה( רבה)?|בוקר טוב|ערב טוב|צהריים טובים|מעולה|אחלה)[\s!.,🙂👍]*$/iu;
 
 const CAPABILITIES = [
   /\bwhat (can|could) you (do|help)/i,
@@ -155,14 +167,17 @@ const PROVENANCE = [
   /מאיפה (ה)?(נתונים|מידע|תשובות)/,
 ];
 
-const PERMISSION_VERB = /\b(change|changes|modify|configure|reconfigure|apply|execute|run (commands?|scripts?)|push|write|shut ?down|reboot|restart|delete|make changes|take action)\b/i;
+const PERMISSION_VERB =
+  /\b(change|changes|modify|configure|reconfigure|apply|execute|run (commands?|scripts?)|push|write|shut ?down|reboot|restart|delete|make changes|take action)\b/i;
 const PERMISSION_FORM = [
   /\b(can|could|will|would|are) you (be )?(able to |allowed to |permitted to |authorized to )?/i,
   /\b(do|does) (you|chatiaf|the ai) have (the )?(permission|access|rights?|authority)\b/i,
   /\b(allowed|permitted|authorized|able) to\b/i,
 ];
-const SELF_AGENCY = /\b(by yourself|on your own|yourself|autonomously|automatically|without (me|my|a|any|human)|directly)\b/i;
-const WRITE_ACCESS = /\b(write|admin|root|enable|config(uration)?|read[- ]write) (access|permissions?|rights?|privileges?)\b/i;
+const SELF_AGENCY =
+  /\b(by yourself|on your own|yourself|autonomously|automatically|without (me|my|a|any|human)|directly)\b/i;
+const WRITE_ACCESS =
+  /\b(write|admin|root|enable|config(uration)?|read[- ]write) (access|permissions?|rights?|privileges?)\b/i;
 const PERMISSION_HE = [
   /(יכול|מסוגל|מורשה|רשאי|מוסמך)[^?]*(לשנות|לבצע|להריץ|לכבות|לעדכן|לכתוב|להחיל|שינויים)/,
   /הרשא(ה|ות) (כתיבה|ניהול|לשנות|לבצע)/,
@@ -172,16 +187,93 @@ const PERMISSION_HE = [
 const OUT_OF_SCOPE = [
   ...[
     // Avoid words with an IT meaning too ("series" of switches, file "shares").
-    'movie', 'movies', 'film', 'films', 'tv show', 'tv series', 'netflix', 'song', 'songs', 'music', 'singer',
-    'sport', 'sports', 'football', 'soccer', 'basketball', 'nba', 'world cup', 'match score',
-    'politics', 'political', 'election', 'elections', 'president', 'prime minister', 'government', 'party leader',
-    'invest', 'investing', 'investment', 'stocks', 'stock market', 'crypto', 'bitcoin', 'ethereum', 'forex',
-    'recipe', 'cooking', 'restaurant', 'dating', 'girlfriend', 'boyfriend', 'relationship', 'marriage', 'love life',
-    'horoscope', 'weather', 'joke', 'jokes', 'poem', 'vacation', 'celebrity', 'gossip',
+    "movie",
+    "movies",
+    "film",
+    "films",
+    "tv show",
+    "tv series",
+    "netflix",
+    "song",
+    "songs",
+    "music",
+    "singer",
+    "sport",
+    "sports",
+    "football",
+    "soccer",
+    "basketball",
+    "nba",
+    "world cup",
+    "match score",
+    "politics",
+    "political",
+    "election",
+    "elections",
+    "president",
+    "prime minister",
+    "government",
+    "party leader",
+    "invest",
+    "investing",
+    "investment",
+    "stocks",
+    "stock market",
+    "crypto",
+    "bitcoin",
+    "ethereum",
+    "forex",
+    "recipe",
+    "cooking",
+    "restaurant",
+    "dating",
+    "girlfriend",
+    "boyfriend",
+    "relationship",
+    "marriage",
+    "love life",
+    "horoscope",
+    "weather",
+    "joke",
+    "jokes",
+    "poem",
+    "vacation",
+    "celebrity",
+    "gossip",
   ].map(enWord),
-  ...['סרט', 'סרטים', 'סדרה', 'סדרות', 'שיר', 'שירים', 'מוזיקה', 'זמר', 'ספורט', 'כדורגל', 'כדורסל', 'פוליטיקה',
-    'בחירות', 'ממשלה', 'ראש הממשלה', 'השקעה', 'להשקיע', 'מניות', 'מניה', 'ביטקוין', 'קריפטו', 'מתכון', 'בישול',
-    'מסעדה', 'זוגיות', 'חברה שלי', 'החבר שלי', 'דייט', 'מזג אוויר', 'בדיחה', 'חופשה'].map(heWord),
+  ...[
+    "סרט",
+    "סרטים",
+    "סדרה",
+    "סדרות",
+    "שיר",
+    "שירים",
+    "מוזיקה",
+    "זמר",
+    "ספורט",
+    "כדורגל",
+    "כדורסל",
+    "פוליטיקה",
+    "בחירות",
+    "ממשלה",
+    "ראש הממשלה",
+    "השקעה",
+    "להשקיע",
+    "מניות",
+    "מניה",
+    "ביטקוין",
+    "קריפטו",
+    "מתכון",
+    "בישול",
+    "מסעדה",
+    "זוגיות",
+    "חברה שלי",
+    "החבר שלי",
+    "דייט",
+    "מזג אוויר",
+    "בדיחה",
+    "חופשה",
+  ].map(heWord),
 ];
 
 const KNOWLEDGE_FORM = [
@@ -209,26 +301,167 @@ const FOLLOW_UP = [
   /(פרט|תרחיב|עוד פרטים|תמשיך)/,
 ];
 
-const COMPARE_FOLLOW_UP = /\b(difference|differ|compare|comparison|versus|vs)\b|ההבדל|ביניהם|לעומת/i;
+const COMPARE_FOLLOW_UP =
+  /\b(difference|differ|compare|comparison|versus|vs)\b|ההבדל|ביניהם|לעומת/i;
 
 // Network vocabulary: in-domain, even when the local knowledge base has no entry for it.
 const NETWORK_TERMS = [
   ...[
-    'ip', 'ipv4', 'ipv6', 'subnet', 'subnetting', 'netmask', 'cidr', 'gateway', 'nat', 'pat', 'bgp', 'eigrp', 'rip', 'is-is',
-    'mpls', 'qos', 'vpn', 'ipsec', 'gre', 'tls', 'ssl', 'https', 'http', 'ftp', 'sftp', 'ssh', 'telnet', 'icmp', 'ping',
-    'traceroute', 'latency', 'jitter', 'packet loss', 'bandwidth', 'throughput', 'mtu', 'ethernet', 'wifi', 'wi-fi',
-    'wireless', 'lan', 'wan', 'trunk', 'lacp', 'port channel', 'etherchannel', 'port', 'ports', 'interface', 'interfaces',
-    'firewall', 'proxy', 'load balancer', 'server', 'servers', 'network', 'networks', 'networking', 'protocol', 'protocols',
-    'packet', 'packets', 'frame', 'frames', 'mac', 'mac address', 'hub', 'modem', 'fiber', 'optic', 'sfp', 'poe', 'nic',
-    'active directory', 'ldap', 'kerberos', 'radius', 'tacacs', 'siem', 'ids', 'ips', 'malware', 'phishing', 'ransomware',
-    'vulnerability', 'patch', 'hardening', 'backup', 'raid', 'virtualization', 'vmware', 'vcenter', 'docker', 'kubernetes',
-    'linux', 'windows server', 'monitoring', 'alert', 'alerts', 'log', 'logs', 'incident', 'root cause', 'outage',
-    'netflow', 'sflow', 'pcap', 'wireshark', 'ntp', 'layer 2', 'layer 3', 'l2', 'l3', 'broadcast', 'multicast', 'unicast',
-    'topology', 'uplink', 'downlink', 'redundancy', 'failover', 'monicomm', 'chatiaf', 'configurator', 'impact',
+    "ip",
+    "ipv4",
+    "ipv6",
+    "subnet",
+    "subnetting",
+    "netmask",
+    "cidr",
+    "gateway",
+    "nat",
+    "pat",
+    "bgp",
+    "eigrp",
+    "rip",
+    "is-is",
+    "mpls",
+    "qos",
+    "vpn",
+    "ipsec",
+    "gre",
+    "tls",
+    "ssl",
+    "https",
+    "http",
+    "ftp",
+    "sftp",
+    "ssh",
+    "telnet",
+    "icmp",
+    "ping",
+    "traceroute",
+    "latency",
+    "jitter",
+    "packet loss",
+    "bandwidth",
+    "throughput",
+    "mtu",
+    "ethernet",
+    "wifi",
+    "wi-fi",
+    "wireless",
+    "lan",
+    "wan",
+    "trunk",
+    "lacp",
+    "port channel",
+    "etherchannel",
+    "port",
+    "ports",
+    "interface",
+    "interfaces",
+    "firewall",
+    "proxy",
+    "load balancer",
+    "server",
+    "servers",
+    "network",
+    "networks",
+    "networking",
+    "protocol",
+    "protocols",
+    "packet",
+    "packets",
+    "frame",
+    "frames",
+    "mac",
+    "mac address",
+    "hub",
+    "modem",
+    "fiber",
+    "optic",
+    "sfp",
+    "poe",
+    "nic",
+    "active directory",
+    "ldap",
+    "kerberos",
+    "radius",
+    "tacacs",
+    "siem",
+    "ids",
+    "ips",
+    "malware",
+    "phishing",
+    "ransomware",
+    "vulnerability",
+    "patch",
+    "hardening",
+    "backup",
+    "raid",
+    "virtualization",
+    "vmware",
+    "vcenter",
+    "docker",
+    "kubernetes",
+    "linux",
+    "windows server",
+    "monitoring",
+    "alert",
+    "alerts",
+    "log",
+    "logs",
+    "incident",
+    "root cause",
+    "outage",
+    "netflow",
+    "sflow",
+    "pcap",
+    "wireshark",
+    "ntp",
+    "layer 2",
+    "layer 3",
+    "l2",
+    "l3",
+    "broadcast",
+    "multicast",
+    "unicast",
+    "topology",
+    "uplink",
+    "downlink",
+    "redundancy",
+    "failover",
+    "monicomm",
+    "chatiaf",
+    "configurator",
+    "impact",
   ].map(enWord),
-  ...['רשת', 'רשתות', 'תקשורת', 'שרת', 'שרתים', 'חומת אש', 'פורט', 'פורטים', 'ממשק', 'כתובת', 'פרוטוקול',
-    'שכבה', 'ניטור', 'לוג', 'לוגים', 'התראה', 'התראות', 'תקלה', 'תקלות', 'קישור', 'סיב', 'ניתוב', 'אבטחת מידע',
-    'סייבר', 'גיבוי', 'וירטואליזציה', 'מונים'].map(heWord),
+  ...[
+    "רשת",
+    "רשתות",
+    "תקשורת",
+    "שרת",
+    "שרתים",
+    "חומת אש",
+    "פורט",
+    "פורטים",
+    "ממשק",
+    "כתובת",
+    "פרוטוקול",
+    "שכבה",
+    "ניטור",
+    "לוג",
+    "לוגים",
+    "התראה",
+    "התראות",
+    "תקלה",
+    "תקלות",
+    "קישור",
+    "סיב",
+    "ניתוב",
+    "אבטחת מידע",
+    "סייבר",
+    "גיבוי",
+    "וירטואליזציה",
+    "מונים",
+  ].map(heWord),
 ];
 
 const CONCEPT_MATCHERS = CONCEPTS.map((c) => ({
@@ -237,11 +470,15 @@ const CONCEPT_MATCHERS = CONCEPTS.map((c) => ({
 }));
 
 // Anchored scenario phrases.
-const DOWN_WORDS = /\b(down|why|err-?disabled?|not working|broken|dead|recover|fix|flapping|flap|issue|problem|offline|failing|failed)\b|נפל|נופל|למה|לא עובד|תקלה|מושבת|מנותק/i;
-const SHUT_WORDS = /\b(shut ?down|shut|disable|turn off|bring down|admin down)\b|תכבה|לכבות|כבה|השבת|תשבית/i;
-const IMPACT_WORDS = /\b(what (would|will) happen|impact|affect(ed)?|what if|consequences?|risk)\b|מה יקרה|השפעה|ישפיע/i;
+const DOWN_WORDS =
+  /\b(down|why|err-?disabled?|not working|broken|dead|recover|fix|flapping|flap|issue|problem|offline|failing|failed)\b|נפל|נופל|למה|לא עובד|תקלה|מושבת|מנותק/i;
+const SHUT_WORDS =
+  /\b(shut ?down|shut|disable|turn off|bring down|admin down)\b|תכבה|לכבות|כבה|השבת|תשבית/i;
+const IMPACT_WORDS =
+  /\b(what (would|will) happen|impact|affect(ed)?|what if|consequences?|risk)\b|מה יקרה|השפעה|ישפיע/i;
 const WAN_ANCHOR = /\b(wan|site-north|edge-rtr-01|xe-0\/1\/[01])\b/i;
-const WAN_PROBLEM = /\b(slow|slowness|latency|delay|errors?|crc|drops?|congest\w*|saturat\w*|loss|down|flap\w*|fix|reroute|what can we do|help|issue|problem)\b|איטי|תקלה|עומס|מה אפשר/i;
+const WAN_PROBLEM =
+  /\b(slow|slowness|latency|delay|errors?|crc|drops?|congest\w*|saturat\w*|loss|down|flap\w*|fix|reroute|what can we do|help|issue|problem)\b|איטי|תקלה|עומס|מה אפשר/i;
 const CONFIG_HISTORY = [
   /\bwhat (has |have )?(changed|was changed|got changed)\b/i,
   /\bwho (changed|modified|touched|edited)\b/i,
@@ -261,13 +498,15 @@ const ALERTS = [
   /^alerts?\??$/i,
   /התראות (פעילות|פתוחות|קריטיות)?/,
 ];
-const HOST_WORDS = /\b(where|which (switch|port)|find|locate|located|connected|plugged|on which|host|lookup|look up)\b|איפה|מחובר|באיזה (מתג|פורט)/i;
-const STATUS_WORDS = /\b(status|state|health|how is|how's|show|details|info|up|down)\b|מצב|סטטוס|תראה/i;
+const HOST_WORDS =
+  /\b(where|which (switch|port)|find|locate|located|connected|plugged|on which|host|lookup|look up)\b|איפה|מחובר|באיזה (מתג|פורט)/i;
+const STATUS_WORDS =
+  /\b(status|state|health|how is|how's|show|details|info|up|down)\b|מצב|סטטוס|תראה/i;
 
 // ---------- classifier ----------
 
 export function detectLang(text: string): Lang {
-  return HEB.test(text) ? 'he' : 'en';
+  return HEB.test(text) ? "he" : "en";
 }
 
 export function extractEntities(text: string): Entities {
@@ -281,7 +520,8 @@ export function extractEntities(text: string): Entities {
 }
 
 function isPermissionQuestion(text: string, e: Entities) {
-  const he = any(text, PERMISSION_HE) && (/(בעצמך|לבד|אוטומטית|באופן עצמאי|הרשא)/.test(text) || !e.iface);
+  const he =
+    any(text, PERMISSION_HE) && (/(בעצמך|לבד|אוטומטית|באופן עצמאי|הרשא)/.test(text) || !e.iface);
   if (he) return true;
   if (WRITE_ACCESS.test(text)) return true;
   const asks = any(text, PERMISSION_FORM) && PERMISSION_VERB.test(text);
@@ -291,63 +531,160 @@ function isPermissionQuestion(text: string, e: Entities) {
 }
 
 function matchScenario(text: string, e: Entities): Scenario | undefined {
-  if (e.iface && (SHUT_WORDS.test(text) || IMPACT_WORDS.test(text))) return 'shutdown';
-  if (e.iface && DOWN_WORDS.test(text)) return 'port_down';
-  if (WAN_ANCHOR.test(text) && (WAN_PROBLEM.test(text) || e.device === 'edge-rtr-01')) return 'wan';
-  if (e.ip && (HOST_WORDS.test(text) || text.trim() === e.ip)) return 'host';
-  if (any(text, CONFIG_HISTORY)) return 'config_changes';
-  if (any(text, ALERTS)) return 'alerts';
-  if ((e.device || e.iface) && STATUS_WORDS.test(text)) return 'device_status';
-  if ((e.device || e.iface) && text.replace(DEVICE_RE, '').replace(IF_RE, '').trim().length < 4) return 'device_status';
+  if (e.iface && (SHUT_WORDS.test(text) || IMPACT_WORDS.test(text))) return "shutdown";
+  if (e.iface && DOWN_WORDS.test(text)) return "port_down";
+  if (WAN_ANCHOR.test(text) && (WAN_PROBLEM.test(text) || e.device === "edge-rtr-01")) return "wan";
+  if (e.ip && (HOST_WORDS.test(text) || text.trim() === e.ip)) return "host";
+  if (any(text, CONFIG_HISTORY)) return "config_changes";
+  if (any(text, ALERTS)) return "alerts";
+  if ((e.device || e.iface) && STATUS_WORDS.test(text)) return "device_status";
+  if ((e.device || e.iface) && text.replace(DEVICE_RE, "").replace(IF_RE, "").trim().length < 4)
+    return "device_status";
   return undefined;
 }
 
-function classifyInScope(text: string, e: Entities, lang: Lang, ctx: ConversationContext): Classification {
-  if (any(text, PROVENANCE)) return { intent: 'DATA_PROVENANCE', confidence: 'high', lang, entities: e, reason: 'asks whether data/model are real' };
-  if (isPermissionQuestion(text, e)) return { intent: 'PERMISSION_QUESTION', confidence: 'high', lang, entities: e, reason: 'asks what the AI may change' };
-  if (any(text, CAPABILITIES)) return { intent: 'SYSTEM_CAPABILITIES', confidence: 'high', lang, entities: e, reason: 'asks what ChatIAF can do' };
+function classifyInScope(
+  text: string,
+  e: Entities,
+  lang: Lang,
+  ctx: ConversationContext,
+): Classification {
+  if (any(text, PROVENANCE))
+    return {
+      intent: "DATA_PROVENANCE",
+      confidence: "high",
+      lang,
+      entities: e,
+      reason: "asks whether data/model are real",
+    };
+  if (isPermissionQuestion(text, e))
+    return {
+      intent: "PERMISSION_QUESTION",
+      confidence: "high",
+      lang,
+      entities: e,
+      reason: "asks what the AI may change",
+    };
+  if (any(text, CAPABILITIES))
+    return {
+      intent: "SYSTEM_CAPABILITIES",
+      confidence: "high",
+      lang,
+      entities: e,
+      reason: "asks what ChatIAF can do",
+    };
 
   const scenario = matchScenario(text, e);
   if (scenario) {
-    return { intent: SCENARIO_INTENT[scenario], scenario, confidence: 'high', lang, entities: e, reason: `anchored match for demo scenario "${scenario}"` };
+    return {
+      intent: SCENARIO_INTENT[scenario],
+      scenario,
+      confidence: "high",
+      lang,
+      entities: e,
+      reason: `anchored match for demo scenario "${scenario}"`,
+    };
   }
 
   const knowledgeForm = any(text, KNOWLEDGE_FORM);
-  if (e.concepts.length > 0 && (knowledgeForm || e.concepts.length >= 2 || text.trim().split(/\s+/).length <= 3)) {
-    return { intent: 'TECHNICAL_KNOWLEDGE', confidence: 'high', lang, entities: e, reason: `concepts: ${e.concepts.join(', ')}` };
+  if (
+    e.concepts.length > 0 &&
+    (knowledgeForm || e.concepts.length >= 2 || text.trim().split(/\s+/).length <= 3)
+  ) {
+    return {
+      intent: "TECHNICAL_KNOWLEDGE",
+      confidence: "high",
+      lang,
+      entities: e,
+      reason: `concepts: ${e.concepts.join(", ")}`,
+    };
   }
 
   if (any(text, FOLLOW_UP)) {
     const last = ctx.turns.at(-1);
     return last
-      ? { intent: 'FOLLOW_UP', confidence: 'medium', lang, entities: e, reason: `refers to previous ${last.intent}` }
-      : { intent: 'AMBIGUOUS', confidence: 'low', lang, entities: e, reason: 'follow-up with no previous topic' };
+      ? {
+          intent: "FOLLOW_UP",
+          confidence: "medium",
+          lang,
+          entities: e,
+          reason: `refers to previous ${last.intent}`,
+        }
+      : {
+          intent: "AMBIGUOUS",
+          confidence: "low",
+          lang,
+          entities: e,
+          reason: "follow-up with no previous topic",
+        };
   }
 
   const networkish = e.concepts.length > 0 || any(text, NETWORK_TERMS);
   if (knowledgeForm && networkish) {
-    return { intent: 'TECHNICAL_KNOWLEDGE', confidence: 'medium', lang, entities: e, reason: 'networking question, no local knowledge entry' };
+    return {
+      intent: "TECHNICAL_KNOWLEDGE",
+      confidence: "medium",
+      lang,
+      entities: e,
+      reason: "networking question, no local knowledge entry",
+    };
   }
-  return { intent: 'AMBIGUOUS', confidence: 'low', lang, entities: e, reason: networkish ? 'in-domain words but no clear request' : 'no in-domain signal' };
+  return {
+    intent: "AMBIGUOUS",
+    confidence: "low",
+    lang,
+    entities: e,
+    reason: networkish ? "in-domain words but no clear request" : "no in-domain signal",
+  };
 }
 
-export function classify(question: string, ctx: ConversationContext = { turns: [] }): Classification {
+export function classify(
+  question: string,
+  ctx: ConversationContext = { turns: [] },
+): Classification {
   const text = question.trim();
   const lang = detectLang(text);
   const e = extractEntities(text);
 
-  if (!text) return { intent: 'AMBIGUOUS', confidence: 'low', lang, entities: e, reason: 'empty' };
-  if (any(text, POLICY_VIOLATION)) return { intent: 'POLICY_VIOLATION', confidence: 'high', lang, entities: e, reason: 'tries to override instructions or the approval rule' };
-  if (GREETING.test(text)) return { intent: 'GREETING', confidence: 'high', lang, entities: e, reason: 'greeting or thanks' };
+  if (!text) return { intent: "AMBIGUOUS", confidence: "low", lang, entities: e, reason: "empty" };
+  if (any(text, POLICY_VIOLATION))
+    return {
+      intent: "POLICY_VIOLATION",
+      confidence: "high",
+      lang,
+      entities: e,
+      reason: "tries to override instructions or the approval rule",
+    };
+  if (GREETING.test(text))
+    return {
+      intent: "GREETING",
+      confidence: "high",
+      lang,
+      entities: e,
+      reason: "greeting or thanks",
+    };
 
   const outOfScope = any(text, OUT_OF_SCOPE);
   const inScope = classifyInScope(text, e, lang, ctx);
 
   if (outOfScope) {
-    const hasInScopePart = inScope.intent !== 'AMBIGUOUS' && inScope.intent !== 'FOLLOW_UP';
+    const hasInScopePart = inScope.intent !== "AMBIGUOUS" && inScope.intent !== "FOLLOW_UP";
     return hasInScopePart
-      ? { intent: 'MIXED', confidence: 'medium', lang, entities: e, inScope, reason: `out-of-scope topic plus ${inScope.intent}` }
-      : { intent: 'OUT_OF_SCOPE', confidence: 'high', lang, entities: e, reason: 'off-topic subject' };
+      ? {
+          intent: "MIXED",
+          confidence: "medium",
+          lang,
+          entities: e,
+          inScope,
+          reason: `out-of-scope topic plus ${inScope.intent}`,
+        }
+      : {
+          intent: "OUT_OF_SCOPE",
+          confidence: "high",
+          lang,
+          entities: e,
+          reason: "off-topic subject",
+        };
   }
   return inScope;
 }

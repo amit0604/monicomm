@@ -1,9 +1,9 @@
-import { ArrowDown } from 'lucide-react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useI18n } from '../../i18n';
-import { MessageBubble } from './MessageBubble';
-import type { ActionHandlers } from './MessageBubble';
-import type { ChatMessage, ProposedAction } from './types';
+import { ArrowDown } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useI18n } from "../../i18n";
+import { MessageBubble } from "./MessageBubble";
+import type { ActionHandlers } from "./MessageBubble";
+import type { ChatMessage, ProposedAction } from "./types";
 
 const STICK_THRESHOLD = 80;
 
@@ -21,7 +21,7 @@ export function MessageList({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = useState(true);
 
-  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     const el = scrollRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior });
   };
@@ -33,16 +33,23 @@ export function MessageList({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const onScroll = () => setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < STICK_THRESHOLD);
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
+    const onScroll = () =>
+      setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < STICK_THRESHOLD);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
     <div className="msg-list">
-      <div className="msg-list__scroll" ref={scrollRef} role="log" aria-live="polite" aria-relevant="additions">
+      <div
+        className="msg-list__scroll"
+        ref={scrollRef}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
         <div className="msg-list__day">
-          <span>{t('chat.today')}</span>
+          <span>{t("chat.today")}</span>
         </div>
         <ol className="msg-list__items">
           {messages.map((m) => (
@@ -51,7 +58,12 @@ export function MessageList({
         </ol>
       </div>
       {!atBottom && (
-        <button type="button" className="msg-list__jump" onClick={() => scrollToBottom('smooth')} aria-label={t('chat.jumpToLatest')}>
+        <button
+          type="button"
+          className="msg-list__jump"
+          onClick={() => scrollToBottom("smooth")}
+          aria-label={t("chat.jumpToLatest")}
+        >
           <ArrowDown size={18} aria-hidden="true" />
         </button>
       )}

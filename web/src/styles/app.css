@@ -1,0 +1,120 @@
+/* Global base styles. Use tokens only (see tokens.css); raw colors are blocked by stylelint.
+   The app shell layout lives in components/layout/layout.css. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.panel {
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-3);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+}
+
+.status-pill--ok {
+  color: var(--ok-strong);
+  background: var(--ok-soft);
+}
+
+.status-pill--warning {
+  color: var(--warning-strong);
+  background: var(--warning-soft);
+}
+
+.status-pill--critical {
+  color: var(--critical-strong);
+  background: var(--critical-soft);
+}
+
+.status-pill--info {
+  color: var(--info-strong);
+  background: var(--info-soft);
+}
+
+.status-pill--neutral {
+  color: var(--neutral-strong);
+  background: var(--neutral-soft);
+}
+
+.status-pill--accent {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+  }
+}

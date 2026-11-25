@@ -1,19 +1,23 @@
 {
   "extends": ["stylelint-config-standard"],
-  "ignoreFiles": ["src/features/pcap/legacy/**"],
   "rules": {
     "color-no-hex": true,
-    "declaration-property-unit-disallowed-list": { "font-size": ["px"] },
-    "selector-class-pattern": null,
-    "custom-property-pattern": null,
-    "property-no-vendor-prefix": null,
-    "no-descending-specificity": null
+    "selector-class-pattern": [
+      "^[a-z][a-z0-9]*(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?$",
+      { "message": "Use BEM-style kebab-case class names (block__element--modifier)" }
+    ],
+    "color-named": "never",
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"],
+    "declaration-property-unit-disallowed-list": { "font-size": ["px", "rem", "em"] },
+    "function-url-scheme-allowed-list": ["data"],
+    "at-rule-disallowed-list": ["import"]
   },
   "overrides": [
     {
       "files": ["src/styles/tokens.css"],
       "rules": {
         "color-no-hex": null,
+        "function-disallowed-list": null,
         "declaration-property-unit-disallowed-list": null
       }
     }
