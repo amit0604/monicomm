@@ -110,6 +110,17 @@
   font-weight: var(--weight-semibold);
 }
 
+.panel--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.panel--flush > .panel__header {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-block-end: 1px solid var(--border);
+}
+
 /* EmptyState */
 .empty {
   display: flex;
@@ -207,12 +218,4 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-}
-
-.mono {
-  font-family: var(--font-mono);
-}
-
-.muted {
-  color: var(--text-muted);
 }

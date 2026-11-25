@@ -47,6 +47,10 @@ select {
   font-family: var(--font-mono);
 }
 
+.muted {
+  color: var(--text-muted);
+}
+
 .num {
   font-variant-numeric: tabular-nums;
 }

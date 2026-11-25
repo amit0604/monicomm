@@ -8,6 +8,8 @@ export interface Source {
   kind: "device" | "log" | "metric" | "config" | "alert" | "inventory" | "knowledge";
   label: string;
   detail?: string;
+  /** Fabricated data. Defaults to true for every non-knowledge source (the in-browser mock). */
+  mock?: boolean;
 }
 
 export type Cell = string | number | { status: Status; label: string };

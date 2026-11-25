@@ -155,9 +155,9 @@ export function IncidentDetail({
         {incident.impact.length === 0 ? (
           <p className="muted">No other devices affected.</p>
         ) : (
-          <ul className="impact">
+          <ul className="incident-impact">
             {incident.impact.map((it, i) => (
-              <li key={i} className="impact__item">
+              <li key={i} className="incident-impact__item">
                 <span className="mono">
                   {it.device}
                   {it.interface && ` ${it.interface}`}

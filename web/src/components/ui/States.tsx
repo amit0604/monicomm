@@ -13,7 +13,15 @@ export function Skeleton({ rows = 3, label = "Loading" }: { rows?: number; label
   );
 }
 
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+export function ErrorState({
+  message,
+  onRetry,
+  retryLabel = "Retry",
+}: {
+  message: string;
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
   return (
     <div className="empty empty--error" role="alert">
       <div className="empty__icon" aria-hidden="true">
@@ -23,7 +31,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
       {onRetry && (
         <Button onClick={onRetry}>
           <RotateCw size={16} aria-hidden="true" />
-          Retry
+          {retryLabel}
         </Button>
       )}
     </div>

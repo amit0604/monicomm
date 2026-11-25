@@ -49,9 +49,13 @@ same data store and the same local LLM service.
   Off-topic requests are declined; mixed requests get only the in-scope part; attempts to override the rules are refused.
 - **Prototype status:** no model is connected yet. Replies come from a rule-based intent classifier, demo scenarios on
   mock data and a small local knowledge base, and the UI labels them as such (Prototype mode, Mock data, Simulated AI, Read-only).
-  The system prompt template for the future model is `api/app/ai/prompts/chat_system.md`; the code-enforced rules are in
-  `web/src/features/chat/policy.ts`.
+  The live backend's system prompt is `api/app/ai/prompts/chat_live.md`; the code-enforced rules are in
+  `web/src/features/chat/policy.ts`. One Chat AI page (`web/src/features/chat/ChatPage.tsx`) has two backends behind
+  `backend.ts`: the in-browser mock (prototype, default) and the API (`VITE_CHAT_BACKEND=api` at build time).
 - **Later:** suggested next steps, hand-off to Incident Investigator ("open an investigation from this chat").
+
+- **API:** `POST /api/v1/chat` `{messages: [{role, content}]}` (alternating, ends with the question) → `{source, reply, model, context}`.
+  The server attaches a size-limited snapshot of dashboard data; there are no tools and the browser keeps the history.
 
 ### 2.2 Dashboard: network overview
 - **Goal:** One screen that shows the health of the network at a glance.
@@ -60,6 +64,12 @@ same data store and the same local LLM service.
 - **AI part:** a short, auto-generated "network summary" (what's abnormal right now) and
   anomaly markers on charts.
 - **Must have:** auto-refresh, time-range picker, drill-down from any widget into Analyzer / Investigator / Mapper.
+
+- **API (`/api/v1/dashboard`):** `GET /summary` · `GET /devices?q=&status=&type=&vendor=` · `GET /devices/{id}` ·
+  `GET /events?q=&severity=&kind=`. Every response has `source` (`demo` or `live`). 503 `no_data_source` when none is connected.
+- **Current state:** Overview, Devices, Device details and Events views in `web/src/features/dashboard/`. The only source is
+  fabricated demo data (`MONICOMM_DEMO_DATA=true` with `MONICOMM_ENV=dev`), labelled DEMO. A real source implements `DataSource`
+  in `api/app/modules/dashboard/models.py`.
 
 ### 2.3 Analyzer: SNMP, logs and syslog analysis
 - **Goal:** Continuously process what flows in and turn raw data into findings.
@@ -311,12 +321,14 @@ Rules that keep this working:
 - **PROPOSED:** Tailwind CSS + shadcn/ui. Needs team approval before adding.
 - Charts: **PROPOSED** Apache ECharts (handles large time series). Topology graph: **PROPOSED** Cytoscape.js or React Flow.
 - One page per feature, plus a shared layout (side nav with the six features, global search with ⌘K).
-- **Language (DECIDED):** English first, with RTL supported from day one; Hebrew strings come later.
+- **Language (DECIDED):** English first (the default and the fallback), with RTL supported from day one. One i18n system for
+  the whole app: `web/src/i18n/` (`en.ts`, `he.ts`); the top bar toggles English/Hebrew and the choice is remembered.
+  Hebrew strings exist for the Dashboard so far; missing keys fall back to English. Module names stay in English.
   All UI text goes through `web/src/i18n/` (`t('key')`), and CSS uses logical properties only
   (`margin-inline-start`, `inset-inline-end`, ...), never `left`/`right`. Commands, configs and IPs stay LTR.
 - **Styling (for now):** plain CSS files per feature using the tokens, no Tailwind until the team decides (open question 8).
 - **Shell (built):** module list `web/src/modules.ts`, layout `web/src/components/layout/` (side nav, top bar with
-  time range, RTL and theme toggles), shared components `web/src/components/ui/`, tokens `web/src/styles/tokens.css`,
+  time range, language and theme toggles), shared components `web/src/components/ui/`, tokens `web/src/styles/tokens.css`,
   global styles `web/src/styles/app.css`. Each module adds a page under `web/src/features/<module>/` and a case in `web/src/App.tsx`.
 
 ---
@@ -607,7 +619,6 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | UI: pastel design system, Segoe UI font, Grafana + monday.com style, light and dark themes (section 6A) | DECIDED |
 | 2026-11-25 | Analyzer includes change impact analysis ("what if"): simulation only, never applied to devices (section 2.3) | DECIDED |
 | 2026-11-25 | Live incident analyzer reacts only to abnormal events; normal operation stores and shows nothing (section 2.4) | DECIDED |
-| 2026-11-25 | Dev-only exception to C1: `MONICOMM_LLM_PROVIDER=gemini` (Google AI Studio) for local development without a GPU. Works only with `MONICOMM_ENV=dev` set explicitly (default is `prod`), key only in the local `.env`, the Docker api can't reach it (internal network); default stays `ollama` | PROPOSED (needs team approval) |
 | 2026-11-25 | Shared test + CI pipeline: ruff/pytest, prettier/eslint/stylelint/vitest, air-gap check, Docker smoke test (section 7) | DECIDED |
 | 2026-11-25 | `web` (nginx) serves the UI and proxies `/api`, so it also plays the `proxy` role for now. Backend containers sit on an `internal` Docker network with no way out | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |
@@ -617,7 +628,9 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | UI in English first with RTL support built in; Hebrew later (§6) | DECIDED |
 | 2026-11-25 | Front-end shell, tokens and shared components built in `web/` (React 19 + TS + Vite, plain CSS + tokens) | DECIDED |
 | 2026-11-25 | Chat AI answers only networking/IT topics (§2.1 scope); prototype labels mock data and simulated AI explicitly | DECIDED |
-| 2026-11-25 | Chat system prompt lives in `api/app/ai/prompts/chat_system.md`; enforcement stays in code, not in the prompt | PROPOSED |
+| 2026-11-25 | One Chat system prompt, `api/app/ai/prompts/chat_live.md` (the unused `chat_system.md` template was merged into it); enforcement stays in code, not in the prompt | PROPOSED |
+| 2026-11-25 | Dev-only exception to C1: `MONICOMM_LLM_PROVIDER=gemini` (Google AI Studio) for local development without a GPU. Works only with `MONICOMM_ENV=dev` set explicitly (default is `prod`), key only in the local `.env`, the Docker api can't reach it (internal network); ChatIAF sends it demo data only; default stays `ollama` | PROPOSED (needs team approval) |
+| 2026-11-25 | Merged the two i18n systems into `web/src/i18n/`: English default, Hebrew via the top-bar toggle (replaces the Dashboard-only Hebrew-default `text.tsx`); module names stay in English | PROPOSED (confirm with the team) |
 
 ---
 

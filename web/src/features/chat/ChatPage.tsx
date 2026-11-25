@@ -11,7 +11,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { Button, EmptyState, Tag } from "../../components/ui";
 import { useI18n } from "../../i18n";
-import { createMockBackend, SUGGESTIONS } from "./backend";
+import { createBackend, SUGGESTIONS } from "./backend";
 import type { ChatBackend } from "./backend";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
@@ -20,7 +20,7 @@ import "./chat.css";
 
 export function ChatPage({ backend: injected }: { backend?: ChatBackend }) {
   const { t } = useI18n();
-  const backend = useMemo(() => injected ?? createMockBackend(), [injected]);
+  const backend = useMemo(() => injected ?? createBackend(t), [injected, t]);
   const chat = useChat(backend);
 
   const handlers = useMemo(

@@ -15,12 +15,13 @@ const ICONS = {
 
 /**
  * Evidence or it didn't happen (PROJECT.md AI rule 4): every AI answer lists what it was based on.
- * In the prototype, network sources point at mock data and are labeled so.
+ * Fabricated data (the in-browser mock, or the API in demo mode) is labeled so.
  */
 export function Sources({ sources }: { sources: Source[] }) {
   const { t } = useI18n();
   if (sources.length === 0) return null;
-  const hasMock = sources.some((s) => s.kind !== "knowledge");
+  const isMock = (s: Source) => s.mock ?? s.kind !== "knowledge";
+  const hasMock = sources.some(isMock);
   return (
     <details className="sources">
       <summary>
@@ -34,7 +35,7 @@ export function Sources({ sources }: { sources: Source[] }) {
             <li key={s.id}>
               <Icon size={14} aria-hidden="true" />
               <span className="sources__label mono">{s.label}</span>
-              {s.kind !== "knowledge" && <Tag muted>{t("chat.mockTag")}</Tag>}
+              {isMock(s) && <Tag muted>{t("chat.mockTag")}</Tag>}
               {s.detail && <span className="sources__detail">{s.detail}</span>}
             </li>
           );

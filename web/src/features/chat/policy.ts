@@ -1,5 +1,5 @@
 // ChatIAF software policy: rules the CODE enforces, whatever any model says.
-// Model guidance lives separately in api/app/ai/prompts/chat_system.md and is not enforced by it.
+// Model guidance lives separately in api/app/ai/prompts/chat_live.md and is not enforced by it.
 import type { DeviceRole } from "./types";
 
 /** What ChatIAF answers about. Anything else is declined (greetings, thanks and capability questions are fine). */

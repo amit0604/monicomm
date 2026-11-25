@@ -173,10 +173,6 @@
   font-size: var(--text-sm);
 }
 
-.topbar__dir {
-  font-size: var(--text-xs);
-}
-
 .topbar__user {
   display: grid;
   place-items: center;

@@ -5,6 +5,7 @@ import { AppShell } from "./components/layout/AppShell";
 import { MODULE_LIST } from "./components/layout/modules";
 import { Button, EmptyState } from "./components/ui";
 import { ChatPage } from "./features/chat/ChatPage";
+import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
 import { useCriticalIncidentToasts } from "./features/investigator/useIncidents";
 import { ChatchupTab } from "./features/pcap/ChatchupTab";
@@ -30,6 +31,8 @@ function Shell() {
 
   function page() {
     switch (route) {
+      case "dashboard":
+        return <DashboardPage />;
       case "chat":
         return <ChatPage />;
       case "investigator":

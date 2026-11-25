@@ -47,7 +47,7 @@ Every assistant message shows how it was produced ("rule-based classifier · int
 
 **Limits of the local classifier:** it matches patterns, not meaning. New phrasings can fall to `AMBIGUOUS`, follow-ups only look one reply back, and Hebrew answers exist for the knowledge base and guardrails while demo scenarios answer in English. The regression tests (`mock/intent.test.ts`) pin the known cases.
 
-**Software policy vs model guidance:** `src/features/chat/policy.ts` holds the rules the code enforces (read-only, approval, second approver). `api/app/ai/prompts/chat_system.md` is the system prompt **template** for the future local model. It is not in use yet.
+**Software policy vs model guidance:** `src/features/chat/policy.ts` holds the rules the code enforces (read-only, approval, second approver). `api/app/ai/prompts/chat_live.md` is the system prompt of the live API backend (`VITE_CHAT_BACKEND=api`).
 
 ## Adding your module
 
