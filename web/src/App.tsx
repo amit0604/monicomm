@@ -1,11 +1,12 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { Construction } from "lucide-react";
 import { Toaster } from "sonner";
 import { AppShell } from "./components/layout/AppShell";
 import { MODULE_LIST } from "./components/layout/modules";
 import { Button, EmptyState } from "./components/ui";
-import { AdminEmails } from "./features/admin/AdminEmails";
 import { AdminPage } from "./features/admin/AdminPage";
+import { AdminUsers } from "./features/admin/AdminUsers";
+import { AuthGate } from "./features/auth/AuthGate";
 import { ChatPage } from "./features/chat/ChatPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { InvestigatorPage } from "./features/investigator/InvestigatorPage";
@@ -14,12 +15,6 @@ import { ChatchupTab } from "./features/pcap/ChatchupTab";
 import { I18nProvider, useI18n } from "./i18n";
 import { useTheme } from "./lib/theme";
 import { useHashRoute } from "./lib/useHashRoute";
-
-// DEV is false in a production build, so Firebase is dropped from it entirely.
-const AuthGate =
-  import.meta.env.DEV && import.meta.env.VITE_AUTH_PROVIDER === "firebase"
-    ? lazy(() => import("./features/auth/AuthGate"))
-    : null;
 
 function Shell() {
   const [route, navigate] = useHashRoute();
@@ -44,7 +39,7 @@ function Shell() {
         return (
           <>
             <AdminPage />
-            <AdminEmails />
+            <AdminUsers />
           </>
         );
       case "dashboard":
@@ -86,15 +81,14 @@ function Shell() {
   );
 }
 
-export default function App() {
+/** login=false is for tests of the shell itself. */
+export default function App({ login = false }: { login?: boolean }) {
   return (
     <I18nProvider>
-      {AuthGate ? (
-        <Suspense fallback={null}>
-          <AuthGate>
-            <Shell />
-          </AuthGate>
-        </Suspense>
+      {login ? (
+        <AuthGate>
+          <Shell />
+        </AuthGate>
       ) : (
         <Shell />
       )}

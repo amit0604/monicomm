@@ -1,97 +1,98 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { I18nProvider } from "../../i18n";
-import AuthGate from "./AuthGate";
-
-const password = vi.fn();
-const google = vi.fn();
-vi.mock("./firebase", () => ({ createSignIn: () => ({ password, google }) }));
+import { AuthGate } from "./AuthGate";
+import { useSession } from "./session";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const config = { api_key: "k", auth_domain: "d", project_id: "p", admin_login: "admin@x.local" };
-const admin = { name: "Admin", role: "admin" };
-let signedIn = false;
-let sessionReply = () => json(admin);
+const admin = { name: "admin", role: "admin" };
+let me: () => Response;
+let sessionReply: () => Response;
 
 const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-  if (url.endsWith("/config")) return json(config);
-  if (url.endsWith("/me")) return signedIn ? json(admin) : json({}, 401);
+  if (url.endsWith("/me")) return me();
   if (init?.method === "DELETE") return new Response(null, { status: 204 });
   return sessionReply();
 });
 
 beforeEach(() => {
   localStorage.setItem("lang", "en");
-  signedIn = false;
+  me = () => json({}, 401);
   sessionReply = () => json(admin);
-  password.mockReset().mockResolvedValue("id-token");
-  google.mockReset().mockResolvedValue("id-token");
+  fetchMock.mockClear();
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => vi.unstubAllGlobals());
 
+function Secret() {
+  return <p>secret app {useSession()?.role ?? "no login"}</p>;
+}
 function open() {
   render(
     <I18nProvider>
       <AuthGate>
-        <p>secret app</p>
+        <Secret />
       </AuthGate>
     </I18nProvider>,
   );
 }
-async function submit(login: string) {
+async function submit() {
   const button = await screen.findByRole("button", { name: "כניסה" });
-  await vi.waitFor(() => expect(button).toBeEnabled());
-  fireEvent.change(screen.getByLabelText("שם משתמש או אימייל"), { target: { value: login } });
+  fireEvent.change(screen.getByLabelText("שם משתמש"), { target: { value: "admin" } });
   fireEvent.change(screen.getByLabelText("סיסמה"), { target: { value: "pw-123456" } });
   fireEvent.click(button);
 }
 
 describe("AuthGate", () => {
-  it("hides the app until sign in, and maps the admin username to its email", async () => {
+  it("hides the app until sign in, then passes on the role", async () => {
     open();
-    await submit("admin");
-    expect(await screen.findByText("secret app")).toBeInTheDocument();
-    expect(password).toHaveBeenCalledWith("admin@x.local", "pw-123456");
+    await submit();
+    expect(await screen.findByText("secret app admin")).toBeInTheDocument();
+    const body = JSON.parse(String(fetchMock.mock.lastCall?.[1]?.body));
+    expect(body).toEqual({ name: "admin", password: "pw-123456" });
   });
 
   it("is in Hebrew and right to left, also when the app is in English", async () => {
     open();
     expect(await screen.findByRole("main")).toHaveAttribute("dir", "rtl");
-    expect(screen.queryByRole("button", { name: "English" })).toBeNull();
-  });
-
-  it("signs in with Google", async () => {
-    open();
-    const button = await screen.findByRole("button", { name: "כניסה עם Google" });
-    await vi.waitFor(() => expect(button).toBeEnabled());
-    fireEvent.click(button);
-    expect(await screen.findByText("secret app")).toBeInTheDocument();
   });
 
   it.each([
-    ["wrong password", { code: "auth/invalid-credential" }, /שגויים/],
-    ["unknown failure", new Error("x"), /נכשלה/],
-  ])("explains %s", async (_name, error, text) => {
-    password.mockRejectedValue(error);
+    [401, /שגויים/],
+    [422, /שגויים/],
+    [429, /יותר מדי/],
+    [500, /נכשלה/],
+  ])("explains a %i and clears the password", async (status, text) => {
+    sessionReply = () => json({}, status);
     open();
-    await submit("a@b.co");
+    await submit();
     expect(await screen.findByRole("alert")).toHaveTextContent(text);
-    expect(screen.queryByText("secret app")).toBeNull();
+    expect(screen.getByLabelText("סיסמה")).toHaveValue("");
+    expect(screen.queryByText(/secret app/)).toBeNull();
   });
 
-  it("refuses a Google account that is not on the list", async () => {
-    sessionReply = () => json({ detail: "not_allowed" }, 403);
+  it("opens the app without login when the api has it off", async () => {
+    me = () => json({ detail: "login_off" }, 404);
     open();
-    await submit("a@b.co");
-    expect(await screen.findByRole("alert")).toHaveTextContent("אין גישה");
+    expect(await screen.findByText("secret app no login")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+
+  it("does not open the app when the server can't be reached, and retries", async () => {
+    me = () => json({}, 502);
+    open();
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    expect(screen.queryByText(/secret app/)).toBeNull();
+    me = () => json(admin);
+    fireEvent.click(retry);
+    expect(await screen.findByText("secret app admin")).toBeInTheDocument();
   });
 
   it("restores a session and signs out", async () => {
-    signedIn = true;
+    me = () => json(admin);
     open();
-    expect(await screen.findByText("secret app")).toBeInTheDocument();
+    expect(await screen.findByText("secret app admin")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(await screen.findByRole("button", { name: "כניסה" })).toBeInTheDocument();
-    expect(screen.queryByText("secret app")).toBeNull();
+    expect(screen.queryByText(/secret app/)).toBeNull();
   });
 });

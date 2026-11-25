@@ -12,7 +12,3 @@ export type ModuleId = (typeof MODULES)[number]["id"];
 
 /** A page of the app: a module, or the admin page (not a module). */
 export type PageId = ModuleId | "admin";
-
-/** The admin page needs login, which is dev-only for now. The api enforces this too. */
-export const ADMIN_ENABLED =
-  import.meta.env.DEV && import.meta.env.VITE_AUTH_PROVIDER === "firebase";

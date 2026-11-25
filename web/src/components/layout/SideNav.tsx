@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 import { PanelLeftClose, PanelLeftOpen, Radar, Settings } from "lucide-react";
 import { useI18n } from "../../i18n";
-import { ADMIN_ENABLED, type PageId } from "../../modules";
+import { useSession } from "../../features/auth/session";
+import type { PageId } from "../../modules";
 import { MODULE_LIST } from "./modules";
 
 export function SideNav({
@@ -16,6 +17,7 @@ export function SideNav({
   onToggle: () => void;
 }) {
   const { t } = useI18n();
+  const isAdmin = useSession()?.role === "admin";
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   return (
@@ -47,7 +49,7 @@ export function SideNav({
               </button>
             </li>
           ))}
-          {ADMIN_ENABLED && (
+          {isAdmin && (
             <li>
               <button
                 type="button"

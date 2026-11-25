@@ -3,7 +3,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.ai import llm_client, llm_settings
-from app.core import auth
+from app.core import auth, users
 from app.core.config import get_settings
 from app.main import app
 
@@ -20,13 +20,12 @@ REAL_CLIENT = httpx.AsyncClient
 
 @pytest.fixture
 def anonymous(monkeypatch, tmp_path):
+    monkeypatch.setitem(users.SCRYPT, "n", 16)  # fast hashes
     for key, value in {
         "ENV": "dev",
         "DEMO_DATA": "true",
-        "AUTH_PROVIDER": "firebase",
-        "FIREBASE_API_KEY": "web-key",
-        "FIREBASE_AUTH_DOMAIN": "x.example",
-        "FIREBASE_PROJECT_ID": "x",
+        "AUTH_PROVIDER": "local",
+        "USERS_FILE": str(tmp_path / "users.json"),
         "LLM_PROVIDER": "ollama",
         "GEMINI_API_KEY": "",
         "LLM_SETTINGS_FILE": str(tmp_path / "llm.json"),
@@ -41,7 +40,8 @@ def anonymous(monkeypatch, tmp_path):
 
 @pytest.fixture
 def client(anonymous):
-    token = auth.open_session(auth.User(name="Admin", role="admin"))
+    users.add(get_settings(), users.NewUser(name="admin", role="admin", password="long-password"))
+    token = auth.open_session(users.find(get_settings(), "admin"))
     anonymous.cookies.set(auth.COOKIE, token)
     return anonymous
 

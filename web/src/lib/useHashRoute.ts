@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { ADMIN_ENABLED, MODULES, type PageId } from "../modules";
+import { MODULES, type PageId } from "../modules";
 
 function parse(hash: string): PageId {
   const id = hash.replace(/^#\/?/, "").split("/")[0];
-  if (id === "admin" && ADMIN_ENABLED) return id;
+  if (id === "admin") return id;
   return MODULES.some((m) => m.id === id) ? (id as PageId) : "chat";
 }
 

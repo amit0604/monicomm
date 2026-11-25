@@ -18,12 +18,6 @@
   font-weight: var(--weight-semibold);
 }
 
-.login__note {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
 .login__error {
   display: flex;
   gap: var(--space-2);
