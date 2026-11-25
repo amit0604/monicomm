@@ -52,7 +52,9 @@ def topology(source: SourceDep) -> Topology:
 @router.post("/parse")
 async def parse(body: ParseIn, source: SourceDep) -> ParseOut:
     try:
-        change = await parser.parse(body.text, source.topology())
+        change = await parser.parse(body.text, service.for_model(source).topology())
+    except service.ExternalModelRefused:
+        raise HTTPException(503, "not_allowed") from None
     except parser.Unparsed as e:
         raise HTTPException(422, f"unparsed: {e}") from None
     except parser.ModelUnavailable:

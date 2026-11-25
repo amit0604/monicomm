@@ -684,6 +684,7 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | One web polling hook, `web/src/lib/usePolled.ts`, for the Dashboard and the Mapper; the Mapper takes device status and type types from the Dashboard. **Open:** the Mapper demo link list (`mapper/demo.py`) and the Analyzer demo topology (`analyzer/demo.py`) are two different demo networks for the same DEMO devices; pick one with the Mapper and Analyzer owners | PROPOSED |
 | 2026-11-25 | Mapper: nodes are the Dashboard inventory, links come from a separate `LinkSource`; link status is derived from both ports (port load uses the shared `util_status` rule); links are colored by physical medium, status is shown by line style + text (§2.5) | PROPOSED |
 | 2026-11-25 | Merged the two i18n systems into `web/src/i18n/`: English default, Hebrew via the top-bar toggle (replaces the Dashboard-only Hebrew-default `text.tsx`); module names stay in English | PROPOSED (confirm with the team) |
+| 2026-11-25 | Live data source for Dashboard/Mapper/Analyzer from the collectors' ingest snmp_metric files; combined with demo in dev demo mode (`api/app/core/live_snmp.py`; with `MONICOMM_INVESTIGATOR_INGEST_DIR` set and demo off the source is live, in dev demo mode it is demo + live and stays labelled "demo"; a cloud model (gemini) only gets the demo half) | PROPOSED |
 
 ---
 
