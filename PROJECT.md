@@ -171,6 +171,21 @@ same data store and the same local LLM service.
 - **AI part:** device type/role classification, naming suggestions, "what changed in the topology since X".
 - **Must have:** interactive graph (zoom, filter by VLAN/site/type, click a node for details),
   inventory table view, change history.
+- **API (`/api/v1/mapper`):** `GET /topology` → `{source, collected_at, nodes, links, unresolved_links}`. A node is a device
+  from the Dashboard's `DataSource` (same ids and status). A link is `{a: {device_id, port}, b: {device_id, port}, medium,
+  speed_mbps, status, reason}`; `medium` is `fiber|copper|wireless|wan`, `status` is `up|degraded|down|unknown`. 503
+  `no_data_source` when no source is connected. Read-only.
+- **How status is decided:** the link list (`LinkSource` in `api/app/modules/mapper/models.py`) only says which ports
+  connect; the status comes from the inventory's ports and devices, worst finding first: device offline or port down →
+  `down`; device not polled recently → `unknown`; port at or over the shared link-load warning (`util_status` in
+  `api/app/core/graph.py`, `MONICOMM_LINK_UTIL_WARN`, default 80%) or with errors → `degraded`. A link with no SNMP
+  port on either side (radio, VPN tunnel) uses its controller's report (`reason: reported`), or is `unknown`. Never `up` by default.
+  Links to devices missing from the inventory are counted in `unresolved_links`, never drawn or guessed.
+- **Current state:** `web/src/features/mapper/`: graph (Cytoscape.js, already bundled for Catchup), colors by medium, status
+  by line style + text on the link, the port at each end next to its device, legend, filters (medium, status), details
+  panel and a links table. The only link list is fabricated demo data on top of the Dashboard demo inventory
+  (`MONICOMM_DEMO_DATA=true` with `MONICOMM_ENV=dev`), labelled DEMO. Next: a real `LinkSource` from LLDP/CDP
+  (`snmp_lldp_neighbor`, see `api/app/modules/investigator/topology.py`), VLAN/site filters, change history.
 
 ### 2.6 Catchup: packet capture (PCAP) investigation
 > **DECIDED:** Catchup = **packet capture files (.pcap / .pcapng)**. Code lives in `api/app/modules/pcap/`.
@@ -352,7 +367,7 @@ Rules that keep this working:
 - One page per feature, plus a shared layout (side nav with the six features, global search with ⌘K).
 - **Language (DECIDED):** English first (the default and the fallback), with RTL supported from day one. One i18n system for
   the whole app: `web/src/i18n/` (`en.ts`, `he.ts`); the top bar toggles English/Hebrew and the choice is remembered.
-  Hebrew strings exist for the Dashboard so far; missing keys fall back to English. Module names stay in English.
+  Hebrew strings exist for the Dashboard and the Mapper so far; missing keys fall back to English. Module names stay in English.
   All UI text goes through `web/src/i18n/` (`t('key')`), and CSS uses logical properties only
   (`margin-inline-start`, `inset-inline-end`, ...), never `left`/`right`. Commands, configs and IPs stay LTR.
 - **Styling (for now):** plain CSS files per feature using the tokens, no Tailwind until the team decides (open question 8).
@@ -454,6 +469,8 @@ Each module has its own pastel accent (nav icon, page header stripe, chart defau
 - Lines are 2px, areas use 20% fill. Gridlines use `--border`. Axis text uses `--text-muted` at `--text-xs`.
 - Status charts (up/down, severity) use the **status** colors, not the categorical palette.
 - No more than 8 series per chart. Group the rest into "Other".
+- Mapper link media use their own tokens taken from this palette: `--link-fiber` (peach), `--link-copper` (periwinkle),
+  `--link-wireless` (mint), `--link-wan` (lavender). A link's status is its line style plus text, never these colors.
 - One shared chart theme file (`web/src/charts/theme.ts`). Don't style charts one by one.
 
 ### Shape, spacing and depth
@@ -591,7 +608,7 @@ and a one-line entry in the decision log below.
 | Dashboard | _TBD_ | |
 | Analyzer (SNMP / syslog / logs) | _TBD_ | |
 | Incident Investigator | _TBD_ | |
-| Mapper | _TBD_ | |
+| Mapper | tomer775 | |
 | Catchup (PCAP) | _TBD_ | |
 | Platform: Docker, DB, LLM, air-gap bundle | _TBD_ | |
 | Front-end shell and design system | tomer775 | |
@@ -664,6 +681,7 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | Login with local users: `MONICOMM_AUTH_PROVIDER=local`, one JSON file (`MONICOMM_USERS_FILE`) with scrypt password hashes, server-side sessions, roles `admin`/`technician`/`viewer` (only the admin page checks roles so far). No internet, so it fits C1. Default is `none` (API open). Revisit with the database or LDAP/AD. API: `/api/v1/auth/{session,me}`, `/api/v1/admin/users` | PROPOSED |
 | 2026-11-25 | Dev-only Admin page (`web/src/features/admin/`, `GET/PUT/DELETE /api/v1/admin/llm`, `POST /api/v1/admin/llm/test`): an admin sets the model connection and the Gemini key. Closed unless login is on; the key is write-only. Saved in `.env.llm.json` (git-ignored, **not encrypted**, read only with `MONICOMM_ENV=dev` and login on), over the `.env` values. Every model call reads it through `api/app/ai/llm_settings.py`. Production needs encrypted storage first (section 10) | PROPOSED (needs team approval) |
 | 2026-11-25 | One graph engine for the Analyzer (planned change) and Investigator rerouting (failure): `api/app/core/graph.py` (adjacency, hops, shortest path, components) and one link-load rule `util_status` (warning at `MONICOMM_LINK_UTIL_WARN`, default 0.8; critical at 100 % or more). `MONICOMM_INVESTIGATOR_UTIL_WARN` is renamed `MONICOMM_LINK_UTIL_WARN`. The Analyzer demo topology reads device type, vendor and site from the Dashboard demo list | PROPOSED |
+| 2026-11-25 | Mapper: nodes are the Dashboard inventory, links come from a separate `LinkSource`; link status is derived from both ports (port load uses the shared `util_status` rule); links are colored by physical medium, status is shown by line style + text (§2.5) | PROPOSED |
 | 2026-11-25 | Merged the two i18n systems into `web/src/i18n/`: English default, Hebrew via the top-bar toggle (replaces the Dashboard-only Hebrew-default `text.tsx`); module names stay in English | PROPOSED (confirm with the team) |
 
 ---
