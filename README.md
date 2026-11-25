@@ -12,6 +12,25 @@ docker compose up -d --build
 ```
 Open http://localhost:8080. Add the local LLM with `docker compose --profile llm up -d`.
 
+## Modules
+
+| Module | Status | Code |
+|---|---|---|
+| Dashboard | Built, on demo data | `api/app/modules/dashboard/`, `web/src/features/dashboard/` |
+| Chat AI (ChatIAF) | Built: in-browser prototype, plus a live API backend | `api/app/modules/chat/`, `web/src/features/chat/` |
+| Analyzer | Not started | |
+| Incident Investigator | Built: live incident analyzer | `api/app/modules/investigator/`, `web/src/features/investigator/` |
+| Mapper | Not started | |
+| Chatchup (PCAP) | Built | `api/app/modules/pcap/`, `web/src/features/pcap/` |
+
+The collectors (syslog and SNMP servers) are separate deployments in `collector/`, each with its own README.
+
+- **Chat AI backend:** the page runs on the in-browser mock by default. Build the web with `VITE_CHAT_BACKEND=api`
+  to use `POST /api/v1/chat` (the local LLM over current Monicomm data).
+- **Incident Investigator input:** set `MONICOMM_INVESTIGATOR_INGEST_DIR` and mount the collectors' dev-ingest
+  directory in `docker-compose.yml` (see the comment there). Empty = listener off.
+- **Language:** English by default; the top bar switches to Hebrew. All UI text lives in `web/src/i18n/`.
+
 ## Develop
 
 | Part | Folder | Dev server | Tests |
@@ -19,7 +38,9 @@ Open http://localhost:8080. Add the local LLM with `docker compose --profile llm
 | API (Python, FastAPI) | `api/` | `uv run uvicorn app.main:app --reload` | `uv run pytest` |
 | Web (React, TypeScript) | `web/` | `npm run dev` (proxies `/api` to port 8000) | `npm test` |
 
-First-time setup: install [uv](https://docs.astral.sh/uv/), Node 22 and Docker. Then:
+First-time setup: install [uv](https://docs.astral.sh/uv/), Node 22 and Docker. Clone the repo **outside OneDrive**
+(for example `C:\Users\<you>\108\Monicomm`): OneDrive locks files and breaks git and `uv`. If `uv sync` fails with
+a hardlink error, run `setx UV_LINK_MODE copy` once and open a new terminal. Then:
 
 ```powershell
 git config core.hooksPath .githooks

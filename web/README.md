@@ -10,7 +10,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. The Chat AI page (ChatIAF) runs fully in the browser on mock network data, so no backend is needed yet.
+Open http://localhost:5173. By default the Chat AI page (ChatIAF) runs fully in the browser on mock network data, so it needs no backend. Run `VITE_CHAT_BACKEND=api npm run dev` to use the API instead.
 
 ## Checks
 
@@ -22,14 +22,14 @@ Before pushing, run the repo-wide `scripts/check.sh` (or `scripts/check.ps1`) fr
 
 ## Layout
 
-| Path                      | What                                                                                                                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/styles/tokens.css`   | All design tokens. The only file allowed to hold raw colors or px font sizes.                                                        |
-| `src/components/ui/`      | Shared components (Button, StatusPill, Tag, Panel, EmptyState). Fix or extend here, never restyle locally.                           |
-| `src/components/layout/`  | App shell: side nav (six modules, fixed order), top bar (time range, RTL toggle, theme toggle).                                      |
-| `src/i18n/`               | UI strings. Add a language by copying `en.ts` and registering it in `index.tsx`.                                                     |
-| `src/features/chat/`      | ChatIAF. `backend.ts` is the single seam to swap the mock for the real API.                                                          |
-| `src/features/chat/mock/` | Mock network, read-only tools, impact analyzer, configurator. The assistant must never import the configurator (a test checks this). |
+| Path                      | What                                                                                                                                    |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/styles/tokens.css`   | All design tokens. The only file allowed to hold raw colors or px font sizes.                                                           |
+| `src/components/ui/`      | Shared components (Button, StatusPill, Tag, Panel, EmptyState, Skeleton, ErrorState, AiTag). Fix or extend here, never restyle locally. |
+| `src/components/layout/`  | App shell: side nav (six modules, fixed order), top bar (time range, language toggle, theme toggle).                                    |
+| `src/i18n/`               | UI strings for the whole app: `en.ts` (default and fallback) and `he.ts`. Register languages in `index.tsx`.                            |
+| `src/features/chat/`      | ChatIAF. `backend.ts` picks the mock or the real API (`VITE_CHAT_BACKEND=api`).                                                         |
+| `src/features/chat/mock/` | Mock network, read-only tools, impact analyzer, configurator. The assistant must never import the configurator (a test checks this).    |
 
 ## ChatIAF in prototype mode: how replies are chosen
 
