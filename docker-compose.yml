@@ -1,0 +1,73 @@
+# Monicomm stack. Start everything with:  docker compose up -d --build
+#
+# Networks enforce the air gap:
+#   backend  internal: true  -> api, db, queue, llm can NOT reach the internet (or anything outside)
+#   edge                     -> only `web` sits here, to publish the UI port to the closed network
+# The CI smoke test checks that the api container really has no way out.
+
+name: monicomm
+
+services:
+  web:
+    build: ./web
+    ports:
+      - "${MONICOMM_HTTP_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge, backend]
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      queue:
+        condition: service_healthy
+    networks: [backend]
+    restart: unless-stopped
+
+  db:
+    image: timescale/timescaledb-ha:pg16.6-ts2.17.2-all
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-monicomm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-monicomm}
+      POSTGRES_DB: ${POSTGRES_DB:-monicomm}
+    volumes:
+      - db-data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-monicomm}"]
+      interval: 5s
+      retries: 20
+      start_period: 120s   # first start initializes the database
+    networks: [backend]
+    restart: unless-stopped
+
+  queue:
+    image: redis:7.4.2-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+    networks: [backend]
+    restart: unless-stopped
+
+  # Local LLM. Off by default (large); start with:  docker compose --profile llm up -d
+  llm:
+    image: ollama/ollama:0.5.7
+    profiles: [llm]
+    volumes:
+      - llm-models:/root/.ollama
+    networks: [backend]
+    restart: unless-stopped
+
+networks:
+  backend:
+    internal: true
+  edge: {}
+
+volumes:
+  db-data: {}
+  llm-models: {}

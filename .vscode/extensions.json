@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "charliermarsh.ruff",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "stylelint.vscode-stylelint",
+    "editorconfig.editorconfig",
+    "ms-azuretools.vscode-docker"
+  ]
+}

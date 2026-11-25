@@ -1,12 +1,7 @@
-# Files that run or are read inside Linux containers/VMs must keep LF line endings,
-# even when checked out on Windows.
-*.sh        text eol=lf
-*.py        text eol=lf
-*.conf      text eol=lf
-*.tmpl      text eol=lf
-*.yaml      text eol=lf
-*.yml       text eol=lf
-*.csv       text eol=lf
-*.example   text eol=lf
-Dockerfile  text eol=lf
-collector/snmp-server/snmpq text eol=lf
+# Same line endings for everyone (Windows and Linux): LF in the repo and working copy
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.pcap binary
+*.pcapng binary

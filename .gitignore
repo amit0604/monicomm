@@ -1,5 +1,9 @@
-# Secrets and site data: never commit (PROJECT.md §10)
+# Secrets and local config
 .env
+*.pem
+*.key
+
+# Collector secrets and site data: never commit (PROJECT.md §10)
 **/secrets/*
 !**/secrets/*.example
 **/certs/*
@@ -7,5 +11,29 @@
 collector/pki/out/
 collector/snmp-server/inventory/devices.csv
 
-# Offline bundles
-deploy/offline/dist/
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Data that must never be committed
+*.pcap
+*.pcapng
+/deploy/offline/bundle/
+/deploy/offline/dist/
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,113 @@
+/*
+ * Monicomm design tokens: the ONLY place where raw colors and sizes are allowed.
+ * Source: PROJECT.md section 6A. Change a value here and in PROJECT.md in the same PR.
+ */
+
+:root {
+  /* Typography */
+  --font-sans: "Segoe UI", "Segoe UI Variable Text", system-ui, -apple-system, roboto,
+    "Helvetica Neue", arial, sans-serif;
+  --font-mono: "Cascadia Mono", consolas, "Liberation Mono", monospace;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+
+  /* Spacing (4px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Shape and depth */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --shadow-1: 0 1px 2px rgb(31 36 51 / 6%), 0 1px 3px rgb(31 36 51 / 8%);
+  --shadow-2: 0 8px 24px rgb(31 36 51 / 12%);
+  --motion-fast: 150ms ease-out;
+  --nav-width: 240px;
+  --nav-width-collapsed: 64px;
+
+  /* Light theme surfaces */
+  --bg: #f6f7fb;
+  --surface: #fff;
+  --surface-2: #f0f2f8;
+  --border: #e3e6ef;
+  --text: #1f2433;
+  --text-muted: #6b7185;
+  --primary: #5b4fd6;
+  --primary-soft: #eceaff;
+  --on-primary: #fff;
+
+  /* Status (soft background / strong text), WCAG AA checked */
+  --ok-soft: #d9f5e7;
+  --ok-strong: #1b7a50;
+  --warning-soft: #fff1c7;
+  --warning-strong: #8a5a00;
+  --critical-soft: #ffdde0;
+  --critical-strong: #b42d41;
+  --info-soft: #dceeff;
+  --info-strong: #2563a8;
+  --neutral-soft: #ecedf2;
+  --neutral-strong: #555b6e;
+  --accent-soft: #ffe6d6;
+  --accent-strong: #9c4517;
+
+  /* Module accents */
+  --accent-chat: #c3b8ff;
+  --accent-dashboard: #9db4ff;
+  --accent-analyzer: #8fe0c4;
+  --accent-investigator: #ffa3ae;
+  --accent-mapper: #8fd3f5;
+  --accent-pcap: #ffc29e;
+
+  /* Chart palette (categorical, in order) */
+  --chart-1: #8ea8ff;
+  --chart-2: #7fd8be;
+  --chart-3: #ffb38a;
+  --chart-4: #c3a6ff;
+  --chart-5: #ff9aa8;
+  --chart-6: #7cccf2;
+  --chart-7: #f5d36b;
+  --chart-8: #a8d672;
+
+  color-scheme: light;
+}
+
+/* Dark theme: explicit choice, or OS preference when no choice was made */
+:root[data-theme="dark"] {
+  --bg: #14161f;
+  --surface: #1c1f2b;
+  --surface-2: #252938;
+  --border: #2f3446;
+  --text: #e8eaf2;
+  --text-muted: #9aa0b4;
+  --primary: #8e85f5;
+  --primary-soft: rgb(142 133 245 / 18%);
+  --on-primary: #14161f;
+  --ok-soft: rgb(27 122 80 / 18%);
+  --warning-soft: rgb(138 90 0 / 18%);
+  --critical-soft: rgb(180 45 65 / 18%);
+  --info-soft: rgb(37 99 168 / 18%);
+  --neutral-soft: rgb(85 91 110 / 18%);
+  --accent-soft: rgb(156 69 23 / 18%);
+  --ok-strong: #6fd4a4;
+  --warning-strong: #f0c45a;
+  --critical-strong: #ff8a99;
+  --info-strong: #82b8f5;
+  --neutral-strong: #b0b5c6;
+  --accent-strong: #ffb07f;
+
+  color-scheme: dark;
+}

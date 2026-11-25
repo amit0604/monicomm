@@ -15,4 +15,6 @@ Hard rules:
 6. **UI must follow `PROJECT.md` section 6A.** Use only the design tokens in `web/src/styles/tokens.css`
    (no raw hex colors or px font sizes in components), build from the shared components in
    `web/src/components/ui/`, use the Segoe UI font stack, show status as color + icon + text, and support light and dark themes.
-7. If you change a decision, API contract or module boundary, update `PROJECT.md` in the same change.
+7. Before finishing a change, run `scripts/check.ps1` (Windows) or `scripts/check.sh`. Don't weaken
+   lint rules, coverage limits or the air-gap check to make them pass.
+8. If you change a decision, API contract or module boundary, update `PROJECT.md` in the same change.
