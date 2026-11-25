@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# snmpq: ad-hoc SNMP from the SNMP server, using the credentials in secrets/*.env
+# (no passwords on the command line or in shell history). Run from collector/snmp-server/.
+#
+#   ./snmpq get       <device-ip> <oid> [oid...]    read single values
+#   ./snmpq walk      <device-ip> [oid]             walk a subtree (default: system group)
+#   ./snmpq bulkwalk  <device-ip> [oid]             faster walk for big tables
+#   ./snmpq test-inform                             send a linkDown inform to this server's trapd
+#   ./snmpq poll-test                               run every Telegraf poll once and print the results
+#
+# Read-only: there is no "set" command on purpose (device writes belong to the configurator, plan §7).
+set -euo pipefail
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+cd "$(dirname "$SELF")"
+
+EXEC_TRAPD="${SNMPQ_EXEC_TRAPD:-docker compose exec -T trapd}"
+EXEC_POLLER="${SNMPQ_EXEC_POLLER:-docker compose exec -T poller}"
+
+# Telegraf names (SHA256, AES256) -> net-snmp names (SHA-256, AES-256).
+V3_RO='. /run/secrets/snmp_ro
+a=$(printf %s "${SNMP_AUTH_PROTOCOL:-SHA}" | sed "s/^SHA\([0-9]\)/SHA-\1/")
+x=$(printf %s "${SNMP_PRIV_PROTOCOL:-AES}" | sed "s/^AES\([0-9]\)/AES-\1/")
+cmd=$1; shift
+exec "$cmd" -v3 -l authPriv -u "$SNMP_USER" -a "$a" -A "$SNMP_AUTH_PASS" -x "$x" -X "$SNMP_PRIV_PASS" -On -t 3 -r 1 "$@"'
+
+INFORM='. /run/secrets/snmp_trap
+a=$(printf %s "${TRAP_AUTH_PROTOCOL:-SHA}" | sed "s/^SHA\([0-9]\)/SHA-\1/")
+x=$(printf %s "${TRAP_PRIV_PROTOCOL:-AES}" | sed "s/^AES\([0-9]\)/AES-\1/")
+exec snmpinform -v3 -l authPriv -u "$TRAP_USER" -a "$a" -A "$TRAP_AUTH_PASS" -x "$x" -X "$TRAP_PRIV_PASS" \
+  -e "$TRAPD_ENGINE_ID" 127.0.0.1:162 "" .1.3.6.1.6.3.1.1.5.3 .1.3.6.1.2.1.2.2.1.1.999 i 999'
+
+POLL_TEST='set -a; . /run/secrets/snmp_ro; set +a
+export SNMP_AUTH_PROTOCOL="${SNMP_AUTH_PROTOCOL:-SHA}" SNMP_PRIV_PROTOCOL="${SNMP_PRIV_PROTOCOL:-AES}"
+exec telegraf --config /etc/telegraf/telegraf.conf --config-directory /tmp/telegraf.d --test'
+
+usage() { sed -n '2,12p' "$SELF" | sed 's/^# \{0,1\}//'; exit 1; }
+
+op="${1:-}"
+[[ -n "$op" ]] || usage
+shift
+case "$op" in
+  get)
+    [[ $# -ge 2 ]] || usage
+    $EXEC_TRAPD sh -c "$V3_RO" sh snmpget "$@"
+    ;;
+  walk|bulkwalk)
+    [[ $# -ge 1 ]] || usage
+    ip="$1"; oid="${2:-.1.3.6.1.2.1.1}"
+    $EXEC_TRAPD sh -c "$V3_RO" sh "snmp$op" "$ip" "$oid"
+    ;;
+  test-inform)
+    $EXEC_TRAPD sh -c "$INFORM" && echo "inform acknowledged by trapd"
+    ;;
+  poll-test)
+    $EXEC_POLLER sh -c "$POLL_TEST"
+    ;;
+  *)
+    usage
+    ;;
+esac

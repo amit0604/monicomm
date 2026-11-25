@@ -1,0 +1,28 @@
+# Monicomm syslog server: a separate deployment on its own VM (docs/plans/syslog-snmp-deployment.md §2).
+# Receives syslog from network devices, keeps a raw archive, forwards events to Monicomm over mTLS.
+name: moni-syslog
+
+services:
+  vector:
+    image: timberio/vector:0.61.0-debian@sha256:f6c23b5a7e16fb2838d33619ef7acf4bad2289a7cf22bc90efc2371f520c4ea2
+    command: ["--config", "/etc/vector/vector.yaml"]
+    # Host networking keeps the real device source IP and avoids Docker's UDP conntrack drops.
+    network_mode: host
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Vector >= 0.5x needs this to read ${VARS} from .env. .env holds no secrets (only IDs, addresses, sizes).
+      VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION: "true"
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - ./vector:/etc/vector:ro
+      - ../certs:/etc/monicomm/certs:ro
+      - ${ARCHIVE_DIR}:/var/lib/monicomm/syslog
+      - ${BUFFER_DIR}:/var/lib/vector
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "5"}

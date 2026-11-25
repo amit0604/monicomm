@@ -3,6 +3,14 @@
 *.pem
 *.key
 
+# Collector secrets and site data: never commit (PROJECT.md §10)
+**/secrets/*
+!**/secrets/*.example
+**/certs/*
+!**/certs/README.md
+collector/pki/out/
+collector/snmp-server/inventory/devices.csv
+
 # Python
 __pycache__/
 *.pyc
@@ -21,6 +29,7 @@ dist/
 *.pcap
 *.pcapng
 /deploy/offline/bundle/
+/deploy/offline/dist/
 
 # Editors / OS
 .vscode/*

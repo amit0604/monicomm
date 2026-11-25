@@ -1,0 +1,123 @@
+# Syslog server pipeline (docs/plans/syslog-snmp-deployment.md §3.2)
+#   devices ─► UDP/TCP 514 ─┬─► raw archive (gzip per day per device)
+#                           └─► normalize ─► disk buffer ─► Monicomm ingest (mTLS)
+# Vendor-specific parsing (Cisco mnemonics, Junos tags) happens in Monicomm, not here.
+
+data_dir: /var/lib/vector
+
+api:
+  enabled: true
+  address: 127.0.0.1:8686   # local only: `docker compose exec vector vector top`
+
+sources:
+  syslog_udp:
+    type: socket
+    mode: udp
+    address: 0.0.0.0:514
+    receive_buffer_bytes: ${UDP_RECEIVE_BUFFER_BYTES}
+    max_length: 65535
+
+  syslog_tcp:
+    type: socket
+    mode: tcp
+    address: 0.0.0.0:514
+    framing:
+      method: newline_delimited
+      newline_delimited:
+        max_length: 65535
+
+  # TLS syslog (RFC 5425, TCP 6514). Enable if the security policy requires it.
+  # Needs a server certificate for this VM in ../certs (syslog-tls.crt / syslog-tls.key).
+  # syslog_tls:
+  #   type: socket
+  #   mode: tcp
+  #   address: 0.0.0.0:6514
+  #   framing:
+  #     method: octet_counting
+  #   tls:
+  #     enabled: true
+  #     crt_file: /etc/monicomm/certs/syslog-tls.crt
+  #     key_file: /etc/monicomm/certs/syslog-tls.key
+  #     verify_certificate: false
+
+  collector_metrics:
+    type: internal_metrics
+    scrape_interval_secs: 60
+
+transforms:
+  archive_format:
+    type: remap
+    inputs: [syslog_udp, syslog_tcp]
+    source: |
+      peer = to_string(.host) ?? "unknown"
+      line = strip_whitespace(to_string(.message) ?? "")
+      .message = format_timestamp!(.timestamp, "%Y-%m-%dT%H:%M:%S%.3fZ") + " " + peer + " " + line
+
+  normalize:
+    type: remap
+    inputs: [syslog_udp, syslog_tcp]
+    source: |
+      raw = strip_whitespace(to_string(.message) ?? "")
+      parsed, err = parse_syslog(raw)
+      . = {
+        "schema": "monicomm.syslog.v1",
+        "kind": "syslog",
+        "collector_id": "${COLLECTOR_ID}",
+        "source_ip": .host,
+        "received_at": .timestamp,
+        "raw": raw
+      }
+      if err == null {
+        .syslog = parsed
+      } else {
+        .parse_error = err
+      }
+
+  health_filter:
+    type: filter
+    inputs: [collector_metrics]
+    condition: |
+      includes([
+        "component_received_events_total",
+        "component_sent_events_total",
+        "component_discarded_events_total",
+        "component_errors_total",
+        "buffer_byte_size",
+        "buffer_events",
+        "buffer_discarded_events_total"
+      ], .name)
+
+  health:
+    type: remap
+    inputs: [health_filter]
+    source: |
+      .tags.collector_id = "${COLLECTOR_ID}"
+
+sinks:
+  archive:
+    type: file
+    inputs: [archive_format]
+    path: /var/lib/monicomm/syslog/%Y-%m-%d/{{ host }}.log.gz
+    compression: gzip
+    idle_timeout_secs: 60
+    encoding:
+      codec: text
+
+  to_monicomm:
+    type: vector
+    inputs: [normalize, health]
+    address: ${MONICOMM_INGEST_ADDRESS}
+    healthcheck:
+      enabled: false          # start and buffer even when Monicomm is down
+    tls:
+      enabled: true
+      ca_file: /etc/monicomm/certs/ca.crt
+      crt_file: /etc/monicomm/certs/collector.crt
+      key_file: /etc/monicomm/certs/collector.key
+      verify_certificate: true
+      verify_hostname: true
+    buffer:
+      type: disk
+      max_size: ${FORWARD_BUFFER_BYTES}
+      # drop_newest keeps the archive branch running if the buffer ever fills.
+      when_full: drop_newest

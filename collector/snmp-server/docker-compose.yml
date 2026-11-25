@@ -1,0 +1,58 @@
+# Monicomm SNMP server: a separate deployment on its own VM (docs/plans/syslog-snmp-deployment.md §2).
+# Receives traps/informs, polls devices with SNMPv3, forwards everything to Monicomm over mTLS.
+# The configurator (device writes, plan §7) is phase F and is not part of this file yet.
+name: moni-snmp
+
+x-hardening: &hardening
+  network_mode: host          # real device source IPs; outbound SNMP from the VM's own address
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  read_only: true
+  tmpfs: [/tmp]
+  logging:
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+services:
+  trapd:
+    <<: *hardening
+    build: ./trapd
+    image: monicomm/trapd:0.1.0
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    secrets: [snmp_trap, snmp_ro]   # snmp_ro only for ./snmpq (ad-hoc read-only queries)
+    volumes:
+      - ${TRAPD_STATE_DIR}:/var/lib/net-snmp     # keeps engine state across restarts
+      - ${TRAP_OUT_DIR}:/var/log/trapd
+
+  poller:
+    <<: *hardening
+    image: telegraf:1.40.2@sha256:3992a56245a9477dfad5b98d9354d3ea7c1bced0aab6630ba49f23ac9a4d269e
+    entrypoint: ["/bin/sh", "/etc/telegraf/entrypoint.sh"]
+    cap_drop: [ALL]
+    secrets: [snmp_ro]
+    volumes:
+      - ./telegraf:/etc/telegraf:ro
+      - ./inventory:/etc/monicomm/inventory:ro
+    depends_on: [shipper]
+
+  shipper:
+    <<: *hardening
+    image: timberio/vector:0.61.0-debian@sha256:f6c23b5a7e16fb2838d33619ef7acf4bad2289a7cf22bc90efc2371f520c4ea2
+    command: ["--config", "/etc/vector/vector.yaml"]
+    env_file: .env
+    environment:
+      # Vector >= 0.5x needs this to read ${VARS} from .env. .env holds no secrets (only IDs, addresses, sizes).
+      VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION: "true"
+    cap_drop: [ALL]
+    volumes:
+      - ./vector:/etc/vector:ro
+      - ../certs:/etc/monicomm/certs:ro
+      - ${TRAP_OUT_DIR}:/var/log/trapd:ro
+      - ${BUFFER_DIR}:/var/lib/vector
+
+secrets:
+  snmp_ro:
+    file: ./secrets/snmp_ro.env
+  snmp_trap:
+    file: ./secrets/snmp_trap.env
