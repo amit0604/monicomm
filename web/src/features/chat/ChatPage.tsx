@@ -1,4 +1,4 @@
-import { Bot, FlaskConical, MessageSquarePlus, ShieldCheck } from 'lucide-react';
+import { Bot, Cpu, Database, FlaskConical, Lock, MessageSquarePlus, ShieldCheck } from 'lucide-react';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { Button, EmptyState, Tag } from '../../components/ui';
@@ -49,10 +49,32 @@ export function ChatPage({ backend: injected }: { backend?: ChatBackend }) {
             {t('chat.subtitle')}
           </p>
         </div>
-        <Tag muted>
-          <FlaskConical size={12} aria-hidden="true" />
-          {t('chat.mockBanner')}
-        </Tag>
+        <ul className="chat__badges" aria-label="Prototype status">
+          <li>
+            <Tag muted>
+              <FlaskConical size={12} aria-hidden="true" />
+              {t('chat.badge.prototype')}
+            </Tag>
+          </li>
+          <li>
+            <Tag muted>
+              <Database size={12} aria-hidden="true" />
+              {t('chat.badge.mock')}
+            </Tag>
+          </li>
+          <li>
+            <Tag muted>
+              <Cpu size={12} aria-hidden="true" />
+              {t('chat.badge.simulated')}
+            </Tag>
+          </li>
+          <li>
+            <Tag muted>
+              <Lock size={12} aria-hidden="true" />
+              {t('chat.badge.readOnly')}
+            </Tag>
+          </li>
+        </ul>
         <Button variant="ghost" onClick={chat.reset} disabled={chat.messages.length === 0}>
           <MessageSquarePlus size={16} aria-hidden="true" />
           {t('chat.newChat')}

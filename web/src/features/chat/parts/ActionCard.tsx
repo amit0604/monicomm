@@ -112,7 +112,13 @@ export function ActionCard({
 
       <footer className="action-card__footer">
         <p className="action-card__note">
-          {open && t('action.aiCannotApply')}
+          {open && (
+            <>
+              {t('action.aiCannotApply')}
+              <br />
+              <strong>{t('action.simulation')}</strong>
+            </>
+          )}
           {action.status === 'applying' && t('action.applyingDetail', { approvalId: action.approvalId ?? '' })}
           {action.status === 'verifying' && t('action.verifyingDetail')}
           {action.status === 'cancelled' && t('action.cancelledDetail')}

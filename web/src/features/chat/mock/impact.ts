@@ -1,5 +1,6 @@
 // Mock IMPACT analyzer: predicts what a change will break before anyone approves it.
 // Another teammate owns the real one; this keeps the same output shape (types.Impact).
+import { approvalsRequiredFor } from '../policy';
 import type { Impact, ProposedAction } from '../types';
 import { getDevice } from './tools';
 import type { Interface } from './network';
@@ -15,8 +16,7 @@ export function draftAction(iface: Interface, op: Operation): ProposedAction {
   const device = getDevice(iface.device);
   if (!device) throw new Error(`Unknown device ${iface.device}`);
 
-  // Docs §7.3: routers, firewalls and core switches need a second approver.
-  const approvalsRequired = device.role === 'router' || device.role === 'firewall' || device.role === 'core-switch' ? 2 : 1;
+  const approvalsRequired = approvalsRequiredFor(device.role);
   // Docs §7.1: SNMP SET only for quick Cisco switch-port operations; NETCONF for everything else.
   const isCiscoSwitch = device.vendor === 'Cisco' && device.role.endsWith('switch');
   const method = isCiscoSwitch && op.kind !== 'ospf_cost' ? 'snmp-set' : 'netconf';

@@ -1,10 +1,11 @@
 // ChatIAF data model. These shapes are the contract with the future api/app/modules/chat,
 // which streams them as JSON events. The API uses snake_case (PROJECT.md 7); map it in the backend adapter.
 import type { Status } from '../../components/ui';
+import type { Classification, TurnContext } from './mock/intent';
 
 export interface Source {
   id: string;
-  kind: 'device' | 'log' | 'metric' | 'config' | 'alert' | 'inventory';
+  kind: 'device' | 'log' | 'metric' | 'config' | 'alert' | 'inventory' | 'knowledge';
   label: string;
   detail?: string;
 }
@@ -39,6 +40,14 @@ export interface ChatMessage {
   parts: Part[];
   sources?: Source[];
   streaming?: boolean;
+  meta?: ReplyMeta;
+}
+
+/** How a reply was produced. Shown in the UI so a rule-based answer is never mistaken for a model's. */
+export interface ReplyMeta extends TurnContext {
+  confidence: Classification['confidence'];
+  reason: string;
+  engine: 'rule-based classifier' | 'local knowledge base' | 'model';
 }
 
 export type Risk = 'low' | 'medium' | 'high';
@@ -86,6 +95,7 @@ export interface ProposedAction {
 
 /** Events the assistant streams for one reply (mock now, HTTP/WebSocket later). */
 export type AssistantEvent =
+  | { type: 'meta'; meta: ReplyMeta }
   | { type: 'tool_start'; id: string; tool: string; args: Record<string, string> }
   | { type: 'tool_end'; id: string; summary: string; durationMs: number }
   | { type: 'text_delta'; text: string }

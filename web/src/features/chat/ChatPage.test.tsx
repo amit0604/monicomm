@@ -21,6 +21,71 @@ async function ask(user: ReturnType<typeof userEvent.setup>, text: string) {
   return screen.findByRole('article', {}, { timeout: 3000 });
 }
 
+async function reply(user: ReturnType<typeof userEvent.setup>, text: string) {
+  const before = document.querySelectorAll('.msg--assistant').length;
+  await user.type(screen.getByLabelText('Message ChatIAF'), `${text}{Enter}`);
+  await waitFor(() => {
+    const all = document.querySelectorAll('.msg--assistant');
+    expect(all.length).toBe(before + 1);
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+  });
+  const all = document.querySelectorAll<HTMLElement>('.msg--assistant');
+  return all[all.length - 1];
+}
+
+describe('ChatIAF transparency', () => {
+  it('shows prototype, mock data, simulated AI and read-only labels, and no "Local model" claim', () => {
+    setup();
+    const badges = screen.getByRole('list', { name: 'Prototype status' });
+    for (const label of ['Prototype mode', 'Mock data', 'Simulated AI', 'Read-only']) {
+      expect(within(badges).getByText(label)).toBeInTheDocument();
+    }
+    expect(screen.queryByText(/Local model/)).not.toBeInTheDocument();
+    expect(screen.getByText(/no AI model or real network connected/)).toBeInTheDocument();
+  });
+
+  it('says how each answer was made', async () => {
+    const { user } = setup();
+    const msg = await reply(user, 'What is DNS?');
+    expect(within(msg).getByText(/local knowledge base · intent TECHNICAL_KNOWLEDGE/)).toBeInTheDocument();
+  });
+
+  it('opened sources show their content, and network sources are marked as mock', async () => {
+    const { user } = setup();
+    const card = await ask(user, 'Why is Gi1/0/5 on access-sw-12 down?');
+    const msg = card.closest('.msg') as HTMLElement;
+    await user.click(within(msg).getByText(/^Sources/));
+    const sources = msg.querySelector<HTMLElement>('.sources')!;
+    expect(sources).toHaveAttribute('open');
+    expect(within(sources).getByText(/Mock data: these sources point/)).toBeVisible();
+    expect(within(sources).getAllByText('mock').length).toBeGreaterThan(0);
+    // The full log line, not a truncated one.
+    expect(within(sources).getByText(/BPDU Guard enabled\. Disabling port\./)).toBeVisible();
+  });
+
+  it('approved changes are labeled as a simulation', async () => {
+    const { user } = setup();
+    const card = await ask(user, 'Why is Gi1/0/5 on access-sw-12 down?');
+    expect(within(card).getByText(/No real device is contacted/)).toBeInTheDocument();
+    await user.click(within(card).getByRole('button', { name: 'Approve and apply' }));
+    await waitFor(() => expect(screen.getByText(/Simulated: ACT-\d+ applied/)).toBeInTheDocument(), { timeout: 3000 });
+  });
+});
+
+describe('ChatIAF conversation context', () => {
+  it('follow-ups use the previous topic, and New chat clears it', async () => {
+    const { user } = setup();
+    await reply(user, 'What is DNS?');
+    const more = await reply(user, 'Can you explain it in more detail?');
+    expect(within(more).getByText(/intent FOLLOW_UP/)).toBeInTheDocument();
+    expect(more).toHaveTextContent(/nslookup/);
+
+    await user.click(screen.getByRole('button', { name: 'New chat' }));
+    const fresh = await reply(user, 'Can you explain it in more detail?');
+    expect(fresh).toHaveTextContent(/no earlier topic in this chat/);
+  });
+});
+
 describe('ChatIAF approval flow', () => {
   it('does not apply anything until the technician approves', async () => {
     const { applySpy, user } = setup();

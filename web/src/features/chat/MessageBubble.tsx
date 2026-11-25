@@ -44,6 +44,15 @@ export function MessageBubble({
             {message.role === 'assistant' && <Tag>{t('chat.aiTag')}</Tag>}
           </div>
         )}
+        {message.meta && (
+          <p className="msg__meta" title={message.meta.reason}>
+            {t('chat.meta', {
+              engine: message.meta.engine,
+              intent: message.meta.intent,
+              confidence: message.meta.confidence,
+            })}
+          </p>
+        )}
 
         <div className="msg__body">
           {message.parts.map((part, i) => {

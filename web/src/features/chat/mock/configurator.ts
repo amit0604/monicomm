@@ -32,7 +32,8 @@ export async function apply(req: ApplyRequest, pace = 1): Promise<ActionResult> 
         ];
   return {
     checks,
-    output: `configurator: ${action.method} apply ${action.id} on ${action.device.name}
+    output: `[SIMULATION] local mock configurator, no device contacted
+configurator: ${action.method} apply ${action.id} on ${action.device.name}
 approval ${req.approvalId} by ${req.approvers.join(', ')}
 ${action.commands.split('\n').map((l) => `> ${l}`).join('\n')}
 result: ${checks.every((c) => c.ok) ? 'OK, confirmed after health checks' : 'device unreachable, rolled back automatically'}`,
@@ -41,5 +42,5 @@ result: ${checks.every((c) => c.ok) ? 'OK, confirmed after health checks' : 'dev
 
 export async function rollback(action: ProposedAction, pace = 1): Promise<string> {
   await wait(700 * pace);
-  return `configurator: rollback ${action.id} on ${action.device.name}\n${action.rollback.split('\n').map((l) => `> ${l}`).join('\n')}\nresult: OK`;
+  return `[SIMULATION] local mock configurator, no device contacted\nconfigurator: rollback ${action.id} on ${action.device.name}\n${action.rollback.split('\n').map((l) => `> ${l}`).join('\n')}\nresult: OK`;
 }

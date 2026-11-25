@@ -44,6 +44,13 @@ same data store and the same local LLM service.
   **Approve** button sends it to the configurator (docs/plans/syslog-snmp-deployment.md §7). High-risk
   changes need an explicit acknowledgement; routers, firewalls and core switches need a second approver.
   Every tool call the AI makes is visible in the conversation. UI: `web/src/features/chat/`.
+- **Scope (DECIDED):** networking, computer communications, IT infrastructure, OSI, TCP/IP, routing and switching,
+  DNS/DHCP, monitoring, servers, logs and alerts, defensive security, troubleshooting, root cause, impact, MoniComm usage.
+  Off-topic requests are declined; mixed requests get only the in-scope part; attempts to override the rules are refused.
+- **Prototype status:** no model is connected yet. Replies come from a rule-based intent classifier, demo scenarios on
+  mock data and a small local knowledge base, and the UI labels them as such (Prototype mode, Mock data, Simulated AI, Read-only).
+  The system prompt template for the future model is `api/app/ai/prompts/chat_system.md`; the code-enforced rules are in
+  `web/src/features/chat/policy.ts`.
 - **Later:** suggested next steps, hand-off to Incident Investigator ("open an investigation from this chat").
 
 ### 2.2 Dashboard: network overview
@@ -487,6 +494,8 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | Chat AI is read-only: it proposes changes, a human approves in the UI, the configurator applies (§2.1) | DECIDED |
 | 2026-11-25 | UI in English first with RTL support built in; Hebrew later (§6) | DECIDED |
 | 2026-11-25 | Front-end shell, tokens and shared components built in `web/` (React 19 + TS + Vite, plain CSS + tokens) | DECIDED |
+| 2026-11-25 | Chat AI answers only networking/IT topics (§2.1 scope); prototype labels mock data and simulated AI explicitly | DECIDED |
+| 2026-11-25 | Chat system prompt lives in `api/app/ai/prompts/chat_system.md`; enforcement stays in code, not in the prompt | PROPOSED |
 
 ---
 

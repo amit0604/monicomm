@@ -7,6 +7,8 @@ import type { Alert, ConfigChange, Device, Host, Interface, LogLine } from './ne
 export const READ_ONLY_TOOLS = [
   'get_device',
   'get_interface',
+  'list_interfaces',
+  'lookup_knowledge_base',
   'query_logs',
   'list_alerts',
   'get_config_changes',
@@ -39,8 +41,13 @@ export function listAlerts(): Alert[] {
   return ALERTS;
 }
 
-export function getConfigChanges(device: string): ConfigChange[] {
-  return CONFIG_CHANGES.filter((c) => c.device === device);
+/** Config changes for one device, or for every device when none is given. */
+export function getConfigChanges(device?: string): ConfigChange[] {
+  return device ? CONFIG_CHANGES.filter((c) => c.device === device) : CONFIG_CHANGES;
+}
+
+export function listInterfaces(device: string): Interface[] {
+  return INTERFACES.filter((i) => i.device === device);
 }
 
 export function findHost(ip: string): Host | undefined {

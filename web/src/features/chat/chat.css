@@ -54,6 +54,32 @@
   line-height: var(--leading-sm);
 }
 
+.chat__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.msg__meta {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.sources__note {
+  margin-block-start: var(--space-2);
+  color: var(--warning-strong);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+
+.sources__label {
+  flex: none;
+}
+
 .chat__empty {
   flex: 1;
   overflow: auto;
@@ -497,6 +523,7 @@
 
 .sources li {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2);
   color: var(--text-muted);
@@ -507,10 +534,11 @@
   align-self: center;
 }
 
+/* Full text, wrapped: a truncated log line is not evidence. */
 .sources__detail {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex-basis: 100%;
+  padding-inline-start: var(--space-5);
+  overflow-wrap: anywhere;
 }
 
 /* Action / impact card */

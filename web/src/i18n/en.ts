@@ -24,7 +24,7 @@ export const en = {
   'placeholder.cta': 'Open Chat AI',
 
   'chat.title': 'ChatIAF',
-  'chat.subtitle': 'Local model · read-only network access',
+  'chat.subtitle': 'Simulated AI · no AI model or real network connected',
   'chat.newChat': 'New chat',
   'chat.today': 'Today',
   'chat.inputPlaceholder': 'Ask about devices, ports, alerts or config changes…',
@@ -35,12 +35,18 @@ export const en = {
   'chat.jumpToLatest': 'Jump to latest',
   'chat.emptyTitle': 'Ask ChatIAF about your network',
   'chat.emptyBody':
-    'It reads devices, logs, alerts and config history and answers with sources. It can propose a change, but only you can approve it.',
-  'chat.aiTag': 'AI',
+    'It reads devices, logs, alerts and config history and answers with sources. It can propose a change, but only you can approve it. Prototype: no AI model or real network is connected yet. Answers come from local rules, mock network data and a small local knowledge base.',
+  'chat.aiTag': 'Simulated AI',
   'chat.sources': 'Sources',
   'chat.you': 'You',
-  'chat.configurator': 'Configurator',
-  'chat.mockBanner': 'Prototype · mock network data',
+  'chat.configurator': 'Configurator (simulated)',
+  'chat.badge.prototype': 'Prototype mode',
+  'chat.badge.mock': 'Mock data',
+  'chat.badge.simulated': 'Simulated AI',
+  'chat.badge.readOnly': 'Read-only',
+  'chat.sourcesMockNote': "Mock data: these sources point at the prototype's synthetic network, not a real system.",
+  'chat.mockTag': 'mock',
+  'chat.meta': '{engine} · intent {intent} · {confidence} confidence',
 
   'tool.running': 'Running',
   'tool.done': 'Done',
@@ -48,6 +54,7 @@ export const en = {
 
   'action.header': 'Proposed change · needs your approval',
   'action.aiCannotApply': 'ChatIAF cannot apply changes. Approving sends this to the configurator under your name.',
+  'action.simulation': 'Simulation: approving runs a local mock configurator. No real device is contacted.',
   'action.device': 'Device',
   'action.method': 'Method',
   'action.commands': 'Commands',
@@ -76,8 +83,8 @@ export const en = {
   'risk.low': 'Low risk',
   'risk.medium': 'Medium risk',
   'risk.high': 'High risk',
-  'toast.applied': 'Change applied on {device}',
-  'toast.rolledBack': 'Change rolled back on {device}',
+  'toast.applied': 'Simulated change applied on {device}',
+  'toast.rolledBack': 'Simulated rollback on {device}',
   'toast.cancelled': 'Change cancelled',
 } as const;
 

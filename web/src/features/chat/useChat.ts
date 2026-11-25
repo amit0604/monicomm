@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useReducer, useRef } from 'react';
-import type { ChatBackend } from './backend';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import type { ChatBackend, ConversationContext } from './backend';
 import type { ActionResult, AssistantEvent, ChatMessage, Part, ProposedAction } from './types';
 
 export const CURRENT_USER = 'technician';
@@ -55,6 +55,8 @@ function applyEvent(message: ChatMessage, event: AssistantEvent): ChatMessage {
       break;
     case 'sources':
       return { ...message, parts, sources: [...(message.sources ?? []), ...event.sources] };
+    case 'meta':
+      return { ...message, parts, meta: event.meta };
   }
   return { ...message, parts };
 }
@@ -105,14 +107,36 @@ function configuratorMessage(text: string, output?: string): ChatMessage {
   return { id: nextId('cfg'), role: 'configurator', createdAt: Date.now(), parts };
 }
 
+/** Conversation context for follow-ups: what each earlier assistant reply in this chat was about. */
+export function contextFrom(messages: ChatMessage[]): ConversationContext {
+  return {
+    turns: messages
+      .filter((m) => m.role === 'assistant' && m.meta)
+      .slice(-5)
+      .map(({ meta }) => ({
+        intent: meta!.intent,
+        concepts: meta!.concepts,
+        entries: meta!.entries,
+        scenario: meta!.scenario,
+        detailShown: meta!.detailShown,
+      })),
+  };
+}
+
 export function useChat(backend: ChatBackend) {
   const [state, dispatch] = useReducer(reducer, initial);
   const abortRef = useRef<AbortController | null>(null);
+  // Read inside send() without making send change on every message.
+  const messagesRef = useRef(state.messages);
+  useEffect(() => {
+    messagesRef.current = state.messages;
+  }, [state.messages]);
 
   const send = useCallback(
     async (text: string) => {
       const question = text.trim();
       if (!question || abortRef.current) return;
+      const context = contextFrom(messagesRef.current);
 
       dispatch({
         type: 'user_message',
@@ -124,7 +148,7 @@ export function useChat(backend: ChatBackend) {
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        for await (const event of backend.ask(question, controller.signal)) {
+        for await (const event of backend.ask(question, controller.signal, context)) {
           dispatch({ type: 'assistant_event', messageId, event });
         }
       } catch (err) {
@@ -161,8 +185,8 @@ export function useChat(backend: ChatBackend) {
         type: 'append_message',
         message: configuratorMessage(
           ok
-            ? `✅ ${action.id} applied on ${action.device.name}. Health checks passed.`
-            : `↩️ ${action.id} on ${action.device.name} failed its health checks and was rolled back automatically.`,
+            ? `✅ Simulated: ${action.id} applied on ${action.device.name}. Health checks passed. No real device was contacted.`
+            : `↩️ Simulated: ${action.id} on ${action.device.name} failed its health checks and was rolled back automatically. No real device was contacted.`,
           result.output,
         ),
       });
@@ -195,13 +219,15 @@ export function useChat(backend: ChatBackend) {
       if (!action || action.status !== 'applied') return;
       const output = await backend.rollback(action);
       dispatch({ type: 'update_action', id, patch: { status: 'rolled_back' } });
-      dispatch({ type: 'append_message', message: configuratorMessage(`↩️ ${action.id} rolled back on ${action.device.name}.`, output) });
+      dispatch({ type: 'append_message', message: configuratorMessage(`↩️ Simulated: ${action.id} rolled back on ${action.device.name}. No real device was contacted.`, output) });
     },
     [backend, state.actions],
   );
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
+    // Clears messages, and with them the conversation context.
+    messagesRef.current = [];
     dispatch({ type: 'reset' });
   }, []);
 
