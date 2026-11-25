@@ -19,7 +19,7 @@ and gives technicians six AI-based tools to understand, map and investigate the 
 | # | Constraint | What it means for us |
 |---|---|---|
 | C1 | **Air-gapped.** No internet access, ever. | No cloud APIs (no OpenAI/Anthropic/etc.), no CDN links in the UI, no runtime `pip install` / `npm install`, no telemetry, no license checks that call home. Every model, image, font and package ships inside the delivery. |
-| C2 | **Runs on Docker.** | Every component is a container. One `docker compose up -d` brings up the whole system. |
+| C2 | **Runs on Docker.** | Every component is a container. One `docker compose up -d` per deployment brings it up: the Monicomm stack, the syslog server and the SNMP server (see §3). |
 | C3 | **Everything local, on the closed network.** | The LLM runs on our own hardware. All data stays on our servers. |
 
 If a library, model or tool can't satisfy C1–C3, we don't use it.
@@ -93,9 +93,11 @@ same data store and the same local LLM service.
 ## 3. Architecture (PROPOSED)
 
 ```
-                     ┌──────────────────────── closed network ────────────────────────┐
-  Network devices ──►│ collector  (SNMP poll/traps, syslog, flows, discovery)         │
-  (SNMP, syslog...)  │      │                                                          │
+  Network devices ──► syslog server VM  (own deployment)  ─┐  mTLS
+  (mgmt network)  ◄─► SNMP server VM    (own deployment)  ─┤  (events, metrics; configurator API)
+                     ┌──────────────── Monicomm VM (no route to devices) ──────────────┐
+                     │ ingest (Vector) ◄───────────────────────────────────────────────┘
+                     │      │                                                          │
                      │      ▼                                                          │
                      │ queue (Redis) ──► workers (parsing, analysis, PCAP, mapping)    │
                      │                        │                                        │
@@ -108,7 +110,14 @@ same data store and the same local LLM service.
                      └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Containers (one service each in `docker-compose.yml`)
+**Collectors are separate deployments (PROPOSED).** The syslog server and the SNMP server each run as
+their own Docker deployment on their own VM on the management network. They receive and poll device data,
+buffer it to disk, and forward it to Monicomm over mutual TLS. The SNMP server holds all device credentials
+and runs the `configurator`, the only component allowed to change device config, and only on a
+human-approved request. Monicomm has no route to network devices. Full plan:
+`docs/plans/syslog-snmp-deployment.md`.
+
+### Containers in the Monicomm deployment (one service each in `docker-compose.yml`)
 
 | Service | Role | Proposed tech |
 |---|---|---|
@@ -116,7 +125,7 @@ same data store and the same local LLM service.
 | `web` | Front end, built static files | React + TypeScript + Vite |
 | `api` | REST/WebSocket API, auth, AI orchestration (tool calling) | Python 3.12 + FastAPI |
 | `worker` | Background jobs: log parsing, anomaly detection, PCAP processing, discovery | Python, same codebase as `api` (arq or Celery) |
-| `collector` | Receives syslog/traps, polls SNMP, receives flows | Python (pysnmp) and/or Telegraf, Vector or rsyslog for syslog |
+| `ingest` | Receives events and metrics from the syslog and SNMP servers (mTLS) and puts them on the queue | Vector |
 | `db` | Relational data, time series, vector embeddings | PostgreSQL 16 + TimescaleDB + pgvector |
 | `queue` | Job queue and cache, pub/sub for live UI updates | Redis |
 | `llm` | Local LLM and embedding model server | Ollama (simple) or vLLM (faster, with a GPU) |
@@ -163,7 +172,9 @@ monicomm/
 │       │   ├── mapper/
 │       │   └── pcap/          ← "Chatchup"
 │       └── workers/
-├── collector/                 ← SNMP / syslog / flow ingestion
+├── collector/                 ← separate deployments, each with its own docker-compose.yml
+│   ├── syslog-server/         ← Vector: receive, archive, forward
+│   └── snmp-server/           ← snmptrapd, Telegraf poller, configurator, Vector shipper
 ├── web/                       ← React front end
 │   └── src/features/{chat,dashboard,analyzer,investigator,mapper,pcap}/
 ├── db/migrations/             ← Alembic migrations
@@ -191,6 +202,7 @@ Rules that keep this working:
 - Pin **every** version: base images by tag *and* digest, Python deps in a lock file, npm `package-lock.json` committed.
 - The UI must not load anything from the internet: no Google Fonts, no CDN scripts, no external map tiles. Bundle fonts and icons locally.
 - No container may need internet at **startup or runtime**. Test this: run the stack with networking to the outside blocked (`internal: true` network in compose) before every release.
+- The syslog server and SNMP server ship as their own bundles (`syslog-server`, `snmp-server`) next to the `monicomm` bundle. They use host networking on their own VMs, so the `internal: true` rule applies to the Monicomm stack only.
 - Optional: a local Docker registry and Python/npm mirrors inside the closed network, for updates.
 
 ---
@@ -432,6 +444,7 @@ and a one-line entry in the decision log below.
 - Login required for everything. Roles: `admin`, `technician`, `viewer`. **PROPOSED:** local users first, LDAP/AD later if the closed network has it.
 - HTTPS inside the network (self-signed or internal CA certificate).
 - SNMP v3 preferred. Credentials (SNMP communities, hypervisor/API passwords) stored encrypted, never in git, never in logs, never sent to the LLM.
+- Device credentials live only on the SNMP server. Monicomm and the LLM run on a VM with no route to network devices.
 - Uploaded PCAPs and logs can contain sensitive data: access control per user/role, retention policy, delete on request.
 - Audit log of who viewed or ran what (including AI tool calls).
 
@@ -447,6 +460,7 @@ and a one-line entry in the decision log below.
 6. Authentication: local users or LDAP/Active Directory?
 7. Data retention period for logs, metrics and captures.
 8. Tailwind + shadcn/ui for the front end: yes or no?
+9. Syslog/SNMP servers: open questions in `docs/plans/syslog-snmp-deployment.md` §12 (device families and versions, management path, vSphere layout, write approval, NETCONF).
 
 ---
 
@@ -458,6 +472,7 @@ and a one-line entry in the decision log below.
 | 2026-11-25 | Six modules: Chat AI, Dashboard, Analyzer, Incident Investigator, Mapper, Chatchup (PCAP) | DECIDED |
 | 2026-11-25 | UI: pastel design system, Segoe UI font, Grafana + monday.com style, light and dark themes (section 6A) | DECIDED |
 | 2026-11-25 | Python/FastAPI backend, React/TS front end, Postgres+Timescale+pgvector, Redis, Ollama/vLLM | PROPOSED |
+| 2026-11-25 | Syslog server and SNMP server are separate Docker deployments on their own vSphere VMs, forwarding to Monicomm over mTLS; device credentials and config writes live only on the SNMP server | PROPOSED |
 
 ---
 
