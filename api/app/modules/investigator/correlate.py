@@ -11,7 +11,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 
 from app.modules.investigator import reroute
-from app.modules.investigator.events import COLD_START, STATEFUL, NetEvent
+from app.modules.investigator.events import STATEFUL, NetEvent
 from app.modules.investigator.topology import Topology, ifkey
 
 FLAP_COUNT = 3  # link downs on one interface within the window
@@ -85,6 +85,9 @@ class Correlator:
         self.ref_bw_mbps = ref_bw_mbps
         self.util_warn = util_warn
         self._open: dict[str, dict] = {}
+        # incident id -> {"key": failed set of the last reroute, "loads": {(dev, if): load_bps}};
+        # memory only: a loaded incident starts empty and recomputes once
+        self._memo: dict[str, dict] = {}
         self._recent: deque[NetEvent] = deque(maxlen=MAX_RECENT)  # all events, window only
         self._held: list[NetEvent] = []  # LINEPROTO downs waiting HOLD_S for an admin-down line
 
@@ -92,6 +95,7 @@ class Correlator:
         for inc in incidents:
             if inc.get("status") == "closed":
                 self._open.pop(inc.get("id"), None)
+                self._memo.pop(inc.get("id"), None)
             else:
                 self._open[inc["id"]] = inc
         if len(self._open) > MAX_OPEN:  # keep the newest by last event
@@ -150,6 +154,7 @@ class Correlator:
         if len(self._open) > MAX_OPEN:
             oldest = min(self._open.values(), key=lambda i: _dt(i["updated_at"]))
             del self._open[oldest["id"]]
+            self._memo.pop(oldest["id"], None)
         return [inc]
 
     def _window_rule(self, ev: NetEvent) -> list[NetEvent]:
@@ -268,49 +273,62 @@ class Correlator:
             impact=impact,
             status="recovered" if impact and all(i["recovered"] for i in impact) else "open",
         )
-        inc["reroute"] = self._reroute(tl, _dt(inc["updated_at"]))
+        inc["reroute"] = self._reroute(inc, _dt(inc["updated_at"]))
 
-    def _reroute(self, tl: list[dict], now: datetime) -> dict | None:
-        """Predicted/recommended paths around links and devices still down; None if nothing is."""
+    def _reroute(self, inc: dict, now: datetime) -> dict | None:
+        """Predicted/recommended paths around links and devices still down; None if nothing is.
+
+        A device is failed when every one of its LLDP links (at least 2) is down, judged from
+        both ends, so a silent dead device whose neighbors log link down toward it counts.
+        coldStart is not a failure: the device sends it when it is back up. Recomputed only
+        when the failed set changes; otherwise the stored inc["reroute"] is kept.
+        """
         try:
             down: dict[tuple, tuple[str, str | None]] = {}  # link key -> (device, interface)
-            for e in tl:  # tl is sorted: the last state per port wins
+            for e in inc["timeline"]:  # sorted: the last state per port wins
                 if e["type"] != "link":
                     continue
                 if e["state"] == "up":
                     down.pop(_key(e), None)
                 elif e["state"] == "down" and e["abnormal"]:
                     down.setdefault(_key(e), (e["device"], e["interface"]))
-            failed_links = list(down.values())
-            failed_devices = {
-                e["device"]
-                for e in tl
-                if e["type"] == "hw_env" and (e["code"] or "").lstrip(".") == COLD_START
-            }
+            edges, failed_devices = None, set()
             if down:
+                edges = self.topology.edges()
                 cut = {(k[1], k[2]) for k in down}
                 ends: dict[str, list[bool]] = {}  # device -> is each of its LLDP links down
-                for ed in self.topology.edges():
+                for ed in edges:
                     gone = (ed["a"], ifkey(ed["a_if"])) in cut or (
                         ed["b"],
                         ifkey(ed["b_if"]),
                     ) in cut
                     ends.setdefault(ed["a"], []).append(gone)
                     ends.setdefault(ed["b"], []).append(gone)
-                devices = {e["device"] for e in tl}
                 # a single-homed device with its one link down is cut off, not failed:
                 # reroute reports it as isolated instead
-                failed_devices |= {d for d in devices if len(ends.get(d, [])) >= 2 and all(ends[d])}
-            if not (failed_links or failed_devices):
-                return None
-            return reroute.compute(
-                self.topology,
-                failed_links,
-                sorted(failed_devices),
-                self.ref_bw_mbps,
-                self.util_warn,
-                now,
-            )
+                failed_devices = {d for d, g in ends.items() if len(g) >= 2 and all(g)}
+            memo = self._memo.setdefault(inc["id"], {"key": None, "loads": {}})
+            key = (frozenset(down), frozenset(failed_devices))
+            if key == memo["key"]:
+                return inc.get("reroute")
+            result = None
+            if down or failed_devices:
+                result = reroute.compute(
+                    self.topology,
+                    list(down.values()),
+                    sorted(failed_devices),
+                    self.ref_bw_mbps,
+                    self.util_warn,
+                    now,
+                    edges=edges,
+                    moved_loads=dict(memo["loads"]),
+                )
+                for flow in (result or {}).get("flows", []):
+                    f = flow.get("failed")
+                    if f and flow.get("load_bps") is not None:  # first seen load wins
+                        memo["loads"].setdefault((f["device"], f["interface"]), flow["load_bps"])
+            memo["key"] = key  # only after success: a failed compute is retried next refresh
+            return result
         except Exception:  # a rerouting bug must never cost us the incident
             return None
 

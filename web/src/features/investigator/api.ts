@@ -80,6 +80,7 @@ export interface RerouteFlow {
   to: string;
   load_bps: number | null;
   reason: string;
+  failed?: { device: string; interface: string | null } | null;
   before: { hops: Hop[] };
   predicted: RoutePath | null;
   recommended: (RoutePath & { why: string }) | null;

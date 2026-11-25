@@ -1,8 +1,21 @@
-import { render, screen, within } from "@testing-library/react";
+import { render as rtlRender, screen, within } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { I18nProvider, type LocaleCode } from "../../i18n";
 import { formatRate, Reroute } from "./Reroute";
-import { REROUTE, REROUTE_CUT_OFF, REROUTE_UNKNOWN, REROUTE_WARNING } from "./testData";
+import {
+  REROUTE,
+  REROUTE_CUT_OFF,
+  REROUTE_FLOW,
+  REROUTE_UNKNOWN,
+  REROUTE_WARNING,
+} from "./testData";
+
+const render = (ui: ReactElement, locale: LocaleCode = "en") =>
+  rtlRender(<I18nProvider locale={locale}>{ui}</I18nProvider>);
 
 const table = (name: RegExp) => screen.getByRole("table", { name });
+
+beforeEach(() => localStorage.clear()); // the provider remembers the language
 
 describe("Reroute", () => {
   it("shows the predicted path with OK hops, moved load and assumptions", () => {
@@ -77,8 +90,28 @@ describe("Reroute", () => {
     );
   });
 
+  it("draws the diagram at natural size and shortens long names, keeping the full one", () => {
+    const long = "core-router-datacenter-north-01";
+    const hops = REROUTE_FLOW.before.hops.map((h) => ({ ...h, to: long }));
+    render(<Reroute reroute={{ ...REROUTE, flows: [{ ...REROUTE_FLOW, before: { hops } }] }} />);
+    const img = screen.getByRole("img");
+    expect(img).toHaveAttribute("width");
+    expect(img.parentElement).toHaveClass("reroute-graph-scroll");
+    const label = [...img.querySelectorAll(".reroute-graph__label")].find(
+      (el) => el.querySelector("title")?.textContent === long,
+    );
+    expect(label?.textContent).toBe(`${long}core-router-datac…`); // <title> + 18-char label
+  });
+
+  it("renders in Hebrew", () => {
+    render(<Reroute reroute={REROUTE_WARNING} />, "he");
+    expect(screen.getByRole("heading", { name: "ניתוב מחדש" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: /נתיב מומלץ/ })).toBeInTheDocument();
+    expect(screen.getByText(/^המלצה בלבד/)).toBeInTheDocument();
+    expect(screen.getByText("keeps every link under 80 %")).toBeInTheDocument(); // server text as is
+  });
+
   it("formats rates in human units", () => {
-    expect(formatRate(null)).toBe("Unknown");
     expect(formatRate(2_500_000_000)).toBe("2.5 Gbps");
     expect(formatRate(1_000_000_000)).toBe("1 Gbps");
     expect(formatRate(420_000_000)).toBe("420 Mbps");

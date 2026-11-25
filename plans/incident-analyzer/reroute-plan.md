@@ -94,3 +94,13 @@ Verification
 ## Phase 4: Docs, review, PR (status: IN PROGRESS)
 - [x] PROJECT.md §2.4 rerouting + link to §2.3 change impact (shared engine later); plan status
 - [ ] full `scripts/check.ps1`; independent review; PR stacked on #5
+
+## Review fixes (2026-11-25, contract changes)
+- `compute(..., now, *, edges=None, moved_loads=None)`: `edges` = a precomputed `topology.edges()` (computed once per
+  refresh); `moved_loads` = `{(device, interface): load_bps}` remembered from the first computation of each failed
+  link; each flow gains `"failed": {"device", "interface"}` (null for device failures) so the caller can remember it.
+- Any edge that shares a failed `(device, ifkey)` end is down (phantom LLDP duplicates can't carry the reroute).
+- Isolation is computed per original component; recommended search binary-searches the utilization ceiling.
+- Device failure = every LLDP link down (≥ 2 links), checked on the far ends of the failed links too (silent device).
+  coldStart no longer means "down" (it is sent when the device is back up).
+- Correlator recomputes reroute only when the set of failed links/devices changes.

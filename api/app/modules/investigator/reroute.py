@@ -10,32 +10,44 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from itertools import combinations
 
-from app.modules.investigator.topology import Topology, ifkey
+from app.modules.investigator.topology import _IFINDEX, Topology, ifkey
 
 UNKNOWN_COST = 65535  # OSPF max metric: a link of unknown speed is a last resort
 MAX_DEVICE_PAIRS = 10
 _RANK = {"ok": 0, "unknown": 1, "warning": 2, "critical": 3}
 
 Step = tuple[str, str, int]  # (from node, to node, edge index)
+Link = tuple[str, str | None]  # (device, interface) as the failure event names it
 
 
 def compute(
     topology: Topology,
-    failed_links: list[tuple[str, str | None]],
+    failed_links: list[Link],
     failed_devices: list[str],
     ref_bw_mbps: float,
     util_warn: float,
     now: datetime,
+    *,
+    edges: list[dict] | None = None,
+    moved_loads: dict[Link, float] | None = None,
 ) -> dict | None:
-    edges = topology.edges()
+    """`edges` = a precomputed `topology.edges()`; `moved_loads` = load remembered per failed
+    link from the first computation (the dead link's own rate drops to 0 on the next poll)."""
+    if edges is None:
+        edges = topology.edges()
+    moved_loads = moved_loads or {}
     costs = [
         max(1, round(ref_bw_mbps / e["speed_mbps"])) if e["speed_mbps"] else UNKNOWN_COST
         for e in edges
     ]
     nodes = {e[end] for e in edges for end in ("a", "b")}
-    down_edges = {
-        i for dev, ifname in failed_links if (i := _find(topology, edges, dev, ifname)) is not None
-    }
+    hits: dict[int, list[Link]] = {}
+    for dev, ifname in failed_links:
+        if (i := _find(topology, edges, dev, ifname)) is not None:
+            hits.setdefault(i, []).append((dev, ifname))
+    # a phantom LLDP duplicate shares the dead port: it can't carry the reroute either
+    dead_ends = set().union(*(_ends(edges[i]) for i in hits))
+    down_edges = set(hits) | {j for j, e in enumerate(edges) if _ends(e) & dead_ends}
     down_nodes = {d for d in failed_devices if d in nodes}
     if not down_edges and not down_nodes:
         return None
@@ -43,13 +55,16 @@ def compute(
     full = _adjacency(edges, set(), set())
     alive = _adjacency(edges, down_edges, down_nodes)
     flows = []
-    for i in sorted(down_edges):
+    for i in sorted(hits):
         e = edges[i]
         reason = f"Link {e['a']} {e['a_if'] or '?'} <-> {e['b']} {e['b_if'] or '?'} down"
         before = [(e["a"], e["b"], i)]
-        flows.append(
-            _flow(edges, costs, alive, e["a"], e["b"], e["load_bps"], reason, before, util_warn)
-        )
+        known = [moved_loads[k] for k in hits[i] if k in moved_loads]
+        # a rate of exactly 0 on a failed link is the post-failure poll, not the moved load
+        moved = known[0] if known else (e["load_bps"] or None)
+        dev, ifname = hits[i][0]
+        flow = _flow(edges, costs, alive, e["a"], e["b"], moved, reason, before, util_warn)
+        flows.append(flow | {"failed": {"device": dev, "interface": ifname}})
     for dev in sorted(down_nodes):
         neighbors = sorted({n for n, _ in full[dev]} - down_nodes)
         # ponytail: first 10 neighbor pairs only; no flow data says which pairs matter
@@ -82,7 +97,16 @@ def compute(
     }
 
 
+def _ends(edge: dict) -> set[tuple[str, str]]:
+    """(device, ifIndex) of the ends with a known ifIndex (a name-only end may be parallel)."""
+    return {(edge[n], edge[f"{n}_port"]) for n in ("a", "b") if edge[f"{n}_port"] is not None}
+
+
 def _find(topology: Topology, edges: list[dict], device: str, interface: str | None) -> int | None:
+    if m := _IFINDEX.match(interface or ""):  # exact port, even among parallel links
+        for i, e in enumerate(edges):
+            if (device, m[1]) in ((e["a"], e["a_port"]), (e["b"], e["b_port"])):
+                return i
     hit = topology.link(device, interface)
     if not hit:
         return None
@@ -177,21 +201,27 @@ def _flow(edges, costs, alive, src, dst, moved, reason, before, warn) -> dict:
     predicted = _path(edges, costs, found[1], moved, warn) if found else None
     recommended = None
     if predicted and predicted["status"] in ("warning", "critical"):
-        # bottleneck search: lowest threshold that still connects, then cheapest path under it
-        # ponytail: one Dijkstra per distinct utilization, fine for hundreds of links
+        # bottleneck search: lowest ceiling that still connects (connectivity only grows with
+        # the ceiling, so binary search), then the cheapest path under it
         utils = {i: u for i, e in enumerate(edges) if (u := _util(e, moved)) is not None}
-        for limit in sorted(set(utils.values())):
-            if limit >= predicted["max_util"]:
-                break
-            if hit := _dijkstra(alive, costs, src, dst, lambda i, t=limit: utils.get(i, 2e9) <= t):
-                recommended = _path(edges, costs, hit[1], moved, warn)
-                recommended["why"] = _why(predicted, recommended, warn)
-                break
+        limits = sorted({u for u in utils.values() if u < predicted["max_util"]})
+        lo, hi, best = 0, len(limits) - 1, None
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            t = limits[mid]
+            if hit := _dijkstra(alive, costs, src, dst, lambda i, t=t: utils.get(i, 2e9) <= t):
+                best, hi = hit, mid - 1
+            else:
+                lo = mid + 1
+        if best:
+            recommended = _path(edges, costs, best[1], moved, warn)
+            recommended["why"] = _why(predicted, recommended, warn)
     return {
         "from": src,
         "to": dst,
         "load_bps": moved,
         "reason": reason,
+        "failed": None,
         "before": {"hops": _path(edges, costs, before, 0.0, warn)["hops"]},
         "predicted": predicted,
         "recommended": recommended,
@@ -235,9 +265,11 @@ def _components(adj: dict) -> list[set[str]]:
 
 
 def _isolated(full: dict, alive: dict, down_nodes: set[str]) -> list[str]:
+    """Per LLDP island: everything cut off from its largest surviving piece."""
     after = _components(alive)
-    if not after:
-        return []
-    main = min(after, key=lambda c: (-len(c), sorted(c)))
-    before = next(c for c in _components(full) if main <= c)
-    return sorted(before - main - down_nodes)
+    out: set[str] = set()
+    for before in _components(full):
+        if pieces := [c for c in after if c <= before]:
+            main = min(pieces, key=lambda c: (-len(c), sorted(c)))
+            out |= before - main - down_nodes
+    return sorted(out)

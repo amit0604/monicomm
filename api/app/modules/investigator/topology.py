@@ -84,9 +84,11 @@ class Topology:
         for port, (remote, rport) in self._lldp.get(device_ip, {}).items():
             if (m and m[1] == port) or ifkey(names.get(port)) == key:
                 return self._ip(remote), rport
+        if m:  # the far end knows this port by name only
+            key = ifkey(names.get(m[1]))
         for device, ports in self._lldp.items():  # only the far end reports this link
             for port, (remote, rport) in ports.items():
-                if self._ip(remote) == device_ip and ifkey(rport) == key:
+                if key and self._ip(remote) == device_ip and ifkey(rport) == key:
                     return device, self._ifnames.get(device, {}).get(port)
         return None
 
@@ -118,39 +120,39 @@ class Topology:
             return None
         return max(in2 - in1, out2 - out1) * 8 / dt
 
-    def _port(self, device_ip: str, name: str | None) -> str | None:
-        """Interface name or 'ifIndex N' -> ifIndex on that device."""
-        if m := _IFINDEX.match(name or ""):
-            return m[1]
-        key = ifkey(name)
-        for port, ifname in self._ifnames.get(device_ip, {}).items():
-            if key and ifkey(ifname) == key:
-                return port
-        return None
-
     def edges(self) -> list[dict]:
-        """One dict per LLDP link, both ends' reports merged; speed = min, load = max of ends."""
+        """One dict per LLDP link, both ends' reports merged; speed = min, load = max of ends.
+
+        `a_port`/`b_port` = ifIndex of that end, None when LLDP gave only a description/MAC.
+        """
+        by_key = {d: {ifkey(n): p for p, n in names.items()} for d, names in self._ifnames.items()}
         merged: dict[tuple, list[tuple[str, str | None, str | None]]] = {}
+        unresolved: list[tuple[tuple[str, str], tuple, list]] = []
         for device, ports in self._lldp.items():
             for port, (remote, rport) in ports.items():
                 far = self._ip(remote)
                 if far == device:
                     continue
-                far_port = self._port(far, rport)
+                m = _IFINDEX.match(rport or "")
+                far_port = m[1] if m else by_key.get(far, {}).get(ifkey(rport))
                 near = (device, port, self._ifnames.get(device, {}).get(port))
                 if far_port is None:
                     # ponytail: unresolved far port (description, MAC) can't merge with the far
-                    # end's own report; poll lldpLocPortTable if duplicates show up
-                    end = (far, None, rport)
-                    pid = f"name:{ifkey(rport)}"
-                else:
-                    end = (far, far_port, self._ifnames.get(far, {}).get(far_port) or rport)
-                    pid = far_port
-                key = tuple(sorted([(device, port), (far, pid)]))
-                merged.setdefault(key, sorted([near, end], key=lambda e: (e[0], e[1] or "")))
+                    # end's own report; poll lldpLocPortTable to resolve it
+                    key = tuple(sorted([(device, port), (far, f"name:{ifkey(rport)}")]))
+                    unresolved.append(((device, port), key, [near, (far, None, rport)]))
+                    continue
+                end = (far, far_port, self._ifnames.get(far, {}).get(far_port) or rport)
+                merged.setdefault(tuple(sorted([(device, port), (far, far_port)])), [near, end])
+        # one local port has one neighbor: the far end's resolved report wins over our guess
+        used = {end for key in merged for end in key}
+        for near_key, key, ends in unresolved:
+            if near_key not in used:
+                merged.setdefault(key, ends)
         out = []
         for key in sorted(merged):
-            (a, a_port, a_if), (b, b_port, b_if) = merged[key]
+            ends = sorted(merged[key], key=lambda e: (e[0], e[1] or ""))
+            (a, a_port, a_if), (b, b_port, b_if) = ends
             ends = [(a, a_port), (b, b_port)]
             speeds = [s for d, p in ends if p and (s := self.speed(d, p)) is not None]
             loads = [r for d, p in ends if p and (r := self.rate(d, p)) is not None]
@@ -158,8 +160,10 @@ class Topology:
                 {
                     "a": a,
                     "a_if": a_if,
+                    "a_port": a_port,
                     "b": b,
                     "b_if": b_if,
+                    "b_port": b_port,
                     "speed_mbps": min(speeds) if speeds else None,
                     "load_bps": max(loads) if loads else None,
                 }

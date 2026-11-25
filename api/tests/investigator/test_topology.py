@@ -138,7 +138,8 @@ def test_edges_merge_both_ends():
     topo.update(counters("10.0.0.2", "core2", 517, "ge-0/0/1", 0, 0, 0, speed=1000))
     topo.update(counters("10.0.0.2", "core2", 517, "ge-0/0/1", 60_000, 0, 150_000_000))
     topo.update(counters("10.0.0.3", "edge1", 3, "Gi0/3", 0, 0, 0, speed=100))
-    assert topo.edges() == [
+    plain = [{k: v for k, v in e.items() if not k.endswith("_port")} for e in topo.edges()]
+    assert plain == [
         {
             "a": "10.0.0.1",
             "a_if": "Gi1/0/24",
