@@ -1,0 +1,21 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "ignoreFiles": ["src/features/pcap/legacy/**"],
+  "rules": {
+    "color-no-hex": true,
+    "declaration-property-unit-disallowed-list": { "font-size": ["px"] },
+    "selector-class-pattern": null,
+    "custom-property-pattern": null,
+    "property-no-vendor-prefix": null,
+    "no-descending-specificity": null
+  },
+  "overrides": [
+    {
+      "files": ["src/styles/tokens.css"],
+      "rules": {
+        "color-no-hex": null,
+        "declaration-property-unit-disallowed-list": null
+      }
+    }
+  ]
+}

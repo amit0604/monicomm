@@ -1,0 +1,172 @@
+/*
+ * Monicomm design tokens: PROJECT.md section 6A.
+ * This is the ONLY file allowed to hold raw colors and px font sizes.
+ * Need a new value? Add it here and update section 6A in the same PR.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Typography */
+  --font-sans: 'Segoe UI', 'Segoe UI Variable Text', system-ui, -apple-system, roboto,
+    'Helvetica Neue', arial, sans-serif;
+  --font-mono: 'Cascadia Mono', consolas, 'Liberation Mono', monospace;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --text-xs: 12px;
+  --leading-xs: 16px;
+  --text-sm: 13px;
+  --leading-sm: 18px;
+  --text-base: 14px;
+  --leading-base: 20px;
+  --text-md: 16px;
+  --leading-md: 24px;
+  --text-lg: 20px;
+  --leading-lg: 28px;
+  --text-xl: 24px;
+  --leading-xl: 32px;
+  --text-2xl: 32px;
+  --leading-2xl: 40px;
+
+  /* Surfaces: light theme (default) */
+  --bg: #f6f7fb;
+  --surface: #fff;
+  --surface-2: #f0f2f8;
+  --border: #e3e6ef;
+  --text: #1f2433;
+  --text-muted: #6b7185;
+  --primary: #5b4fd6;
+  --primary-soft: #eceaff;
+  --on-primary: #fff;
+
+  /* Status pills: soft background + strong text (WCAG AA) */
+  --ok-soft: #d9f5e7;
+  --ok-strong: #1b7a50;
+  --warning-soft: #fff1c7;
+  --warning-strong: #8a5a00;
+  --critical-soft: #ffdde0;
+  --critical-strong: #b42d41;
+  --info-soft: #dceeff;
+  --info-strong: #2563a8;
+  --neutral-soft: #ecedf2;
+  --neutral-strong: #555b6e;
+  --accent-soft: #ffe6d6;
+  --accent-strong: #9c4517;
+
+  /* Module accents */
+  --module-chat: #c3b8ff;
+  --module-dashboard: #9db4ff;
+  --module-analyzer: #8fe0c4;
+  --module-investigator: #ffa3ae;
+  --module-mapper: #8fd3f5;
+  --module-pcap: #ffc29e;
+
+  /* Chart palette (categorical, in this order) */
+  --chart-1: #8ea8ff;
+  --chart-2: #7fd8be;
+  --chart-3: #ffb38a;
+  --chart-4: #c3a6ff;
+  --chart-5: #ff9aa8;
+  --chart-6: #7cccf2;
+  --chart-7: #f5d36b;
+  --chart-8: #a8d672;
+
+  /* Chat bubbles (ChatIAF) */
+  --bubble-user: var(--primary-soft);
+  --bubble-assistant: var(--surface);
+  --chat-wallpaper: var(--bg);
+
+  /* Spacing: 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Depth */
+  --shadow-1: 0 1px 2px rgb(31 36 51 / 6%), 0 1px 3px rgb(31 36 51 / 8%);
+  --shadow-2: 0 8px 24px rgb(31 36 51 / 12%);
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Layout */
+  --nav-width: 240px;
+  --nav-width-collapsed: 64px;
+  --topbar-height: 56px;
+  --focus-ring: 0 0 0 2px var(--primary);
+}
+
+/* Dark theme (Grafana-style). Same values in both blocks: one follows the OS, one follows the toggle. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --bg: #14161f;
+    --surface: #1c1f2b;
+    --surface-2: #252938;
+    --border: #2f3446;
+    --text: #e8eaf2;
+    --text-muted: #9aa0b4;
+    --primary: #8e85f5;
+    --primary-soft: color-mix(in srgb, #8e85f5 18%, transparent);
+    --on-primary: #14161f;
+
+    /* Dark mode: strong colors are lifted for contrast, and each soft color is its strong color at 18%. */
+    --ok-soft: color-mix(in srgb, var(--ok-strong) 18%, transparent);
+    --ok-strong: #6fd3a5;
+    --warning-soft: color-mix(in srgb, var(--warning-strong) 18%, transparent);
+    --warning-strong: #f2c461;
+    --critical-soft: color-mix(in srgb, var(--critical-strong) 18%, transparent);
+    --critical-strong: #ff8f9f;
+    --info-soft: color-mix(in srgb, var(--info-strong) 18%, transparent);
+    --info-strong: #8cbcf5;
+    --neutral-soft: color-mix(in srgb, var(--neutral-strong) 18%, transparent);
+    --neutral-strong: #b9bed0;
+    --accent-soft: color-mix(in srgb, var(--accent-strong) 18%, transparent);
+    --accent-strong: #ffb48a;
+    --bubble-user: color-mix(in srgb, #8e85f5 24%, #1c1f2b);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow-2: 0 8px 24px rgb(0 0 0 / 40%);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #14161f;
+  --surface: #1c1f2b;
+  --surface-2: #252938;
+  --border: #2f3446;
+  --text: #e8eaf2;
+  --text-muted: #9aa0b4;
+  --primary: #8e85f5;
+  --primary-soft: color-mix(in srgb, #8e85f5 18%, transparent);
+  --on-primary: #14161f;
+  --ok-soft: color-mix(in srgb, var(--ok-strong) 18%, transparent);
+  --ok-strong: #6fd3a5;
+  --warning-soft: color-mix(in srgb, var(--warning-strong) 18%, transparent);
+  --warning-strong: #f2c461;
+  --critical-soft: color-mix(in srgb, var(--critical-strong) 18%, transparent);
+  --critical-strong: #ff8f9f;
+  --info-soft: color-mix(in srgb, var(--info-strong) 18%, transparent);
+  --info-strong: #8cbcf5;
+  --neutral-soft: color-mix(in srgb, var(--neutral-strong) 18%, transparent);
+  --neutral-strong: #b9bed0;
+  --accent-soft: color-mix(in srgb, var(--accent-strong) 18%, transparent);
+  --accent-strong: #ffb48a;
+  --bubble-user: color-mix(in srgb, #8e85f5 24%, #1c1f2b);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 40%);
+}
