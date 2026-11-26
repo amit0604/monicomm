@@ -1,4 +1,4 @@
-import { Bell, Languages, Moon, Sun, UserRound } from "lucide-react";
+import { Bell, Languages, Moon, Sun } from "lucide-react";
 import { useI18n } from "../../i18n";
 import type { MessageKey } from "../../i18n/en";
 import { Button } from "../ui";
@@ -52,9 +52,6 @@ export function TopBar({
         <Button variant="ghost" iconOnly aria-label={t("topbar.alerts")} title={t("topbar.alerts")}>
           <Bell size={16} aria-hidden="true" />
         </Button>
-        <span className="topbar__user" title={t("topbar.user")}>
-          <UserRound size={16} aria-hidden="true" />
-        </span>
       </div>
     </header>
   );

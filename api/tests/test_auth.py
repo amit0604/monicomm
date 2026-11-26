@@ -53,7 +53,13 @@ def test_everything_but_health_and_login_needs_a_session(client):
 
 def test_sign_in_and_out(client):
     res = login(client, " Admin ")
-    assert res.json() == {"name": "admin", "role": "admin"}
+    assert res.json() == {
+        "name": "admin",
+        "role": "admin",
+        "display_name": None,
+        "email": None,
+        "source": "local",
+    }
     cookie = res.headers["set-cookie"].lower()
     assert "httponly" in cookie and "samesite=strict" in cookie and "secure" not in cookie
     assert client.get("/api/v1/dashboard/summary").status_code == 200

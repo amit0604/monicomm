@@ -26,6 +26,33 @@ class Settings(BaseSettings):
     auth_provider: str = "none"
     users_file: str = "/data/auth/users.json"
     cookie_secure: bool = False  # true when the UI is served over HTTPS
+    # Names under these domains count as inside the closed network (comma list, e.g. "corp.example")
+    internal_domains: str = ""
+    # LDAP / Active Directory login (read-only: search and bind). Empty URL = off.
+    ldap_url: str = ""  # ldap://dc01.corp.example:389 or ldaps://dc01.corp.example:636
+    ldap_start_tls: bool = False
+    ldap_ca_file: str = ""  # PEM file of the internal CA, inside the container
+    ldap_bind_dn: str = ""  # service account; empty = anonymous search
+    ldap_bind_password: str = ""
+    ldap_base_dn: str = ""
+    ldap_user_filter: str = "(|(sAMAccountName={username})(uid={username}))"
+    ldap_admin_group: str = ""  # group DN whose members are admins
+    ldap_technician_group: str = ""
+    ldap_default_role: str = "viewer"  # viewer, technician, or none (= members of the groups only)
+    # SSO over OpenID Connect (on-prem AD FS, Keycloak...). Empty issuer = off.
+    sso_issuer: str = ""
+    sso_client_id: str = ""
+    sso_client_secret: str = ""
+    sso_scopes: str = "openid profile email"
+    sso_groups_claim: str = "groups"
+    sso_admin_group: str = ""
+    sso_technician_group: str = ""
+    sso_default_role: str = "viewer"
+    sso_label: str = "SSO"
+    sso_redirect_url: str = ""  # empty = <this server>/api/v1/auth/sso/callback
+    sso_ca_file: str = ""
+    # What the Admin page saved for LDAP and SSO, over the values above (secrets write-only)
+    auth_settings_file: str = "/data/auth/auth-settings.json"
     investigator_ingest_dir: str = ""  # empty = listener off
     investigator_data_dir: str = "/data/investigator"
     investigator_window_s: int = 120

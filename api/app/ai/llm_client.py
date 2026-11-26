@@ -9,43 +9,21 @@ key comes from the local .env (never git), and the Docker api container can't re
 (internal network). Never enable it on the closed network.
 """
 
-import ipaddress
-from urllib.parse import urlparse
-
 import httpx
 
 from app.ai import llm_settings
+from app.core.airgap import ExternalEndpointError, check_url
 from app.core.config import Settings
 
-
-class ExternalEndpointError(ValueError):
-    """Raised when the LLM URL points outside the closed network."""
+__all__ = ["ExternalEndpointError", "LLMUnavailable", "chat", "model_name", "validate_llm_url"]
 
 
 class LLMUnavailable(RuntimeError):
     """Raised when the model server can't be reached or returns an error."""
 
 
-def _is_internal_host(host: str) -> bool:
-    # Docker service names and local names have no dots ("llm", "localhost") or end in .local/.lan
-    if "." not in host or host.endswith((".local", ".lan", ".internal", ".localhost")):
-        return True
-    try:
-        ip = ipaddress.ip_address(host)
-    except ValueError:
-        return False  # a public-looking DNS name such as api.example.com
-    return ip.is_private or ip.is_loopback
-
-
 def validate_llm_url(url: str) -> str:
-    parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise ExternalEndpointError(f"Invalid LLM URL: {url!r}")
-    if not _is_internal_host(parsed.hostname):
-        raise ExternalEndpointError(
-            f"LLM URL {url!r} is outside the closed network. Monicomm is air-gapped."
-        )
-    return url
+    return check_url(url, {"http", "https"}, "LLM")
 
 
 def llm_base_url(settings: Settings | None = None) -> str:

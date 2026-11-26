@@ -1,0 +1,18 @@
+# OPT-IN: lets the api reach the LDAP server and the SSO identity provider on the LAN.
+#
+# By default the api is only on the `backend` network (internal: true) and reaches nothing outside
+# Docker. LDAP login and the SSO token exchange need the directory / identity provider, so this
+# file adds one more network to the api only. Use it only on the closed network, together with:
+#   - MONICOMM_INTERNAL_DOMAINS (the api refuses any LDAP/SSO address outside the closed network)
+#   - the host firewall that keeps Monicomm away from network devices (PROJECT.md section 3)
+#
+#   docker compose -f docker-compose.yml -f docker-compose.directory.yml up -d
+#
+# The browser talks to the identity provider directly for the SSO sign-in page; that needs nothing here.
+
+services:
+  api:
+    networks: [backend, directory]
+
+networks:
+  directory: {}
