@@ -1,23 +1,27 @@
 """Live link list from the collectors' LLDP neighbor tables, and the dev-only demo + live mix."""
 
 from app.core import live_snmp
+from app.core.snmp_names import ifkey, remote_port, short_name
 from app.modules.dashboard.models import Source
 from app.modules.mapper.models import LinkEnd, LinkRecord, LinkSource
 
 
 def _remote_port(remote: live_snmp.LiveDevice | None, n: live_snmp.Neighbor) -> str:
-    """The remote device's ifName for the neighbor's port id or description, else what LLDP says."""
-    wanted = [v for v in (n.port_id, n.port_desc) if v]
-    if remote is not None:
-        for value in wanted:
-            for p in remote.ports:
-                if value in (p.name, p.alias):
-                    return p.name
-    return wanted[0] if wanted else "?"
+    """The remote device's ifName for the neighbor's port, else what LLDP says.
+
+    Same rules as the Investigator (app.core.snmp_names): a MAC or bare number is no name, and
+    "Gi1/0/1" matches "GigabitEthernet1/0/1"."""
+    named = remote_port(n.port_id, n.port_desc)
+    if remote is not None and named:
+        key = ifkey(named)
+        for p in remote.ports:
+            if named == p.index or key in (ifkey(p.name), ifkey(p.alias)):
+                return p.name
+    return named or "?"
 
 
 def links_from(devices: list[live_snmp.LiveDevice]) -> list[LinkRecord]:
-    by_name = {d.name.lower(): d for d in devices if d.name}
+    by_name = {short_name(d.name): d for d in devices if d.name}
     by_ip = {d.ip: d for d in devices}
     seen: set[frozenset[tuple[str, str]]] = set()
     links = []
@@ -27,8 +31,8 @@ def links_from(devices: list[live_snmp.LiveDevice]) -> list[LinkRecord]:
         ports = {p.index: p for p in d.ports}
         for n in d.neighbors:
             local = ports.get(n.local_port)
-            name = n.sys_name.lower()
-            remote = by_name.get(name) or by_name.get(name.split(".")[0]) or by_ip.get(n.chassis_id)
+            remote = by_name.get(short_name(n.sys_name)) if n.sys_name else None
+            remote = remote or by_ip.get(n.chassis_id)
             a = LinkEnd(device=d.name, port=local.name if local else n.local_port)
             b_name = remote.name if remote and remote.name else n.sys_name or n.chassis_id
             b = LinkEnd(device=b_name, port=_remote_port(remote, n))

@@ -8,8 +8,8 @@ from typing import get_args
 from pydantic import ValidationError
 
 from app.ai import llm_client
+from app.core.snmp_names import ifkey
 from app.modules.analyzer.models import Change, ChangeKind, Topology
-from app.modules.investigator.topology import ifkey
 
 PROMPT_FILE = Path(__file__).resolve().parents[2] / "ai" / "prompts" / "analyzer_change_parse.md"
 # ponytail: caps keep the prompt small; past ~300 devices send only names that appear in the text

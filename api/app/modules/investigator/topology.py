@@ -9,32 +9,9 @@ Rows used:
 Assumes lldpLocPortNum == ifIndex (lldpLocPortTable is not polled). Pure, in memory.
 """
 
-import re
+from app.core.snmp_names import IFINDEX, ifkey, octet_rate, remote_port, short_name
 
-_IF = re.compile(r"^([A-Za-z][A-Za-z-]*?)[\s-]*(\d.*)$")
-_IFINDEX = re.compile(r"^ifIndex (\d+)$")
-_MAC = re.compile(r"^[0-9A-Fa-f]{2}(?:[:-]?[0-9A-Fa-f]{2}){5}$")
-
-
-def ifkey(name: str | None) -> str | None:
-    """Compare key for interface names: 'GigabitEthernet1/0/24' and 'Gi1/0/24' -> 'gi1/0/24'."""
-    if not name:
-        return None
-    name = name.strip()
-    m = _IF.match(name)
-    return (m[1][:2] + m[2]).lower() if m else name.lower()
-
-
-def _short(name: str) -> str:
-    return name.split(".")[0].lower()  # "r1.example.net" and "R1" are the same device
-
-
-def _remote_port(fields: dict) -> str | None:
-    pid, desc = fields.get("lldpRemPortId"), fields.get("lldpRemPortDesc")
-    # port id subtype is not polled: a MAC or a bare ifIndex number is useless, take the description
-    if isinstance(pid, str) and re.search(r"[A-Za-z]", pid) and not _MAC.match(pid):
-        return pid
-    return desc or (str(pid) if pid else None)
+__all__ = ["Topology", "ifkey"]
 
 
 class Topology:
@@ -52,7 +29,7 @@ class Topology:
         if not isinstance(device, str) or not device:
             return
         if name := tags.get("sysName"):
-            self._names[_short(name)] = device
+            self._names[short_name(name)] = device
         measurement, index = metric.get("measurement"), str(tags.get("index") or "")
         if measurement == "snmp_interface" and index:
             if tags.get("ifName"):
@@ -62,10 +39,13 @@ class Topology:
             parts = index.split(".")
             remote = fields.get("lldpRemSysName") or fields.get("lldpRemChassisId")
             if len(parts) == 3 and remote:
-                self._lldp.setdefault(device, {})[parts[1]] = (remote, _remote_port(fields))
+                self._lldp.setdefault(device, {})[parts[1]] = (
+                    remote,
+                    remote_port(fields.get("lldpRemPortId"), fields.get("lldpRemPortDesc")),
+                )
 
     def _ip(self, name: str) -> str:
-        return self._names.get(_short(name), name)  # unresolved: keep the sysName
+        return self._names.get(short_name(name), name)  # unresolved: keep the sysName
 
     def neighbors(self, device_ip: str) -> set[str]:
         # ponytail: linear scan over all LLDP rows, index by resolved IP if networks get large
@@ -79,7 +59,7 @@ class Topology:
     def link(self, device_ip: str, interface: str | None) -> tuple[str, str | None] | None:
         if not interface:
             return None
-        m = _IFINDEX.match(interface)
+        m = IFINDEX.match(interface)
         key, names = ifkey(interface), self._ifnames.get(device_ip, {})
         for port, (remote, rport) in self._lldp.get(device_ip, {}).items():
             if (m and m[1] == port) or ifkey(names.get(port)) == key:
@@ -114,11 +94,12 @@ class Topology:
         samples = self._samples.get((device_ip, str(if_index)), [])
         if len(samples) < 2:
             return None
-        (t1, in1, out1), (t2, in2, out2) = samples
-        dt = (t2 - t1) / 1000
-        if dt <= 0 or in2 < in1 or out2 < out1:
-            return None
-        return max(in2 - in1, out2 - out1) * 8 / dt
+        (t1, in1, out1), (t2, in2, out2) = samples  # polled_at in ms
+        rates = (
+            octet_rate(t1 / 1000, in1, t2 / 1000, in2),
+            octet_rate(t1 / 1000, out1, t2 / 1000, out2),
+        )
+        return None if None in rates else max(rates)
 
     def edges(self) -> list[dict]:
         """One dict per LLDP link, both ends' reports merged; speed = min, load = max of ends.
@@ -133,7 +114,7 @@ class Topology:
                 far = self._ip(remote)
                 if far == device:
                     continue
-                m = _IFINDEX.match(rport or "")
+                m = IFINDEX.match(rport or "")
                 far_port = m[1] if m else by_key.get(far, {}).get(ifkey(rport))
                 near = (device, port, self._ifnames.get(device, {}).get(port))
                 if far_port is None:

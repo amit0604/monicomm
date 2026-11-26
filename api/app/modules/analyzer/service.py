@@ -1,6 +1,7 @@
 """Change impact data source and report store selection."""
 
 from app.ai import llm_settings
+from app.core import data_sources
 from app.core.config import get_settings
 from app.modules.analyzer.live import CombinedTopology, LiveTopology
 from app.modules.analyzer.models import TopologySource
@@ -16,16 +17,13 @@ class ExternalModelRefused(RuntimeError):
 
 
 def get_source() -> TopologySource:
-    """Same rule as the Dashboard's get_source(): demo (dev only), live, or in dev both."""
-    settings = get_settings()
-    ingest = settings.investigator_ingest_dir
-    if settings.demo_data and settings.env == "dev":
-        from app.modules.analyzer.demo import DemoTopology
+    """Demo, live or both: the shared rule in app.core.data_sources."""
+    from app.modules.analyzer.demo import DemoTopology
 
-        return CombinedTopology(DemoTopology(), LiveTopology(ingest)) if ingest else DemoTopology()
-    if ingest:
-        return LiveTopology(ingest)
-    raise NoDataSource
+    source = data_sources.choose(DemoTopology, LiveTopology, CombinedTopology)
+    if source is None:
+        raise NoDataSource
+    return source
 
 
 def for_model(source: TopologySource) -> TopologySource:

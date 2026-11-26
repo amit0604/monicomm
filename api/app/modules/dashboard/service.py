@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from app.core.config import get_settings
+from app.core import data_sources
 from app.modules.dashboard.demo import DemoSource
 from app.modules.dashboard.live import CombinedSource, LiveSource
 from app.modules.dashboard.models import (
@@ -26,14 +26,11 @@ class NoDataSource(RuntimeError):
 
 
 def get_source() -> DataSource:
-    """Demo data (dev only, never on a real site), live collector data, or in dev both together."""
-    settings = get_settings()
-    ingest = settings.investigator_ingest_dir
-    if settings.demo_data and settings.env == "dev":
-        return CombinedSource(DemoSource(), LiveSource(ingest)) if ingest else DemoSource()
-    if ingest:
-        return LiveSource(ingest)
-    raise NoDataSource
+    """Demo, live or both: the shared rule in app.core.data_sources."""
+    source = data_sources.choose(DemoSource, LiveSource, CombinedSource)
+    if source is None:
+        raise NoDataSource
+    return source
 
 
 def without_live(source: DataSource) -> DataSource | None:

@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.core.snmp_names import octet_rate
+
 FILE = "snmp_metric.jsonl"
 READ_BUDGET = 4 * 1024 * 1024  # bytes read per refresh across today's and yesterday's file
 UP_WITHIN_S = 180  # a device is up if its last snmp_system poll is younger than this
@@ -118,10 +120,10 @@ def _util(new: Record, old: Record | None, key: str, speed: int | None) -> float
     if old is None or not speed:
         return None
     a, b = _int(old["fields"].get(key)), _int(new["fields"].get(key))
-    dt = new["_t"] - old["_t"]
-    if a is None or b is None or b < a or dt <= 0:  # counter reset or wrap: no reading
+    if a is None or b is None:
         return None
-    return round(min((b - a) * 8 / dt / (speed * 1e6) * 100, 100.0), 1)
+    bps = octet_rate(old["_t"], a, new["_t"], b)  # None on a counter reset or wrap
+    return None if bps is None else round(min(bps / (speed * 1e6) * 100, 100.0), 1)
 
 
 def _port(new: Record, old: Record | None) -> Port:

@@ -10,9 +10,10 @@ from collections import deque
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 
+from app.core.snmp_names import ifkey
 from app.modules.investigator import reroute
 from app.modules.investigator.events import STATEFUL, NetEvent
-from app.modules.investigator.topology import Topology, ifkey
+from app.modules.investigator.topology import Topology
 
 FLAP_COUNT = 3  # link downs on one interface within the window
 LOGIN_COUNT, LOGIN_WINDOW_S = 5, 300  # failed logins on one device

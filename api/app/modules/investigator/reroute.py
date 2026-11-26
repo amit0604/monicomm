@@ -9,7 +9,8 @@ from datetime import UTC, datetime
 from itertools import combinations
 
 from app.core import graph
-from app.modules.investigator.topology import _IFINDEX, Topology, ifkey
+from app.core.snmp_names import IFINDEX, ifkey
+from app.modules.investigator.topology import Topology
 
 UNKNOWN_COST = 65535  # OSPF max metric: a link of unknown speed is a last resort
 MAX_DEVICE_PAIRS = 10
@@ -106,7 +107,7 @@ def _ends(edge: dict) -> set[tuple[str, str]]:
 
 
 def _find(topology: Topology, edges: list[dict], device: str, interface: str | None) -> int | None:
-    if m := _IFINDEX.match(interface or ""):  # exact port, even among parallel links
+    if m := IFINDEX.match(interface or ""):  # exact port, even among parallel links
         for i, e in enumerate(edges):
             if (device, m[1]) in ((e["a"], e["a_port"]), (e["b"], e["b_port"])):
                 return i

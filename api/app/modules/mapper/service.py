@@ -6,7 +6,7 @@ map shows the same status as the Dashboard. A link's status is worked out from b
 
 from datetime import UTC, datetime
 
-from app.core.config import get_settings
+from app.core import data_sources
 from app.core.graph import util_status
 from app.modules.dashboard.models import DataSource, Device, Interface
 from app.modules.mapper.demo import DemoLinks
@@ -29,14 +29,11 @@ class NoLinkSource(RuntimeError):
 
 
 def get_link_source() -> LinkSource:
-    """Same rule as the Dashboard's get_source(): demo (dev only), live, or in dev both."""
-    settings = get_settings()
-    ingest = settings.investigator_ingest_dir
-    if settings.demo_data and settings.env == "dev":
-        return CombinedLinks(DemoLinks(), LiveLinks(ingest)) if ingest else DemoLinks()
-    if ingest:
-        return LiveLinks(ingest)
-    raise NoLinkSource
+    """Demo, live or both: the shared rule in app.core.data_sources."""
+    source = data_sources.choose(DemoLinks, LiveLinks, CombinedLinks)
+    if source is None:
+        raise NoLinkSource
+    return source
 
 
 def _hot(port: Interface, util_warn: float) -> bool:

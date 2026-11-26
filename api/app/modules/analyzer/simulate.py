@@ -9,6 +9,7 @@ import secrets
 from datetime import UTC, datetime
 
 from app.core import graph
+from app.core.snmp_names import ifkey
 from app.modules.analyzer.models import (
     Affected,
     Change,
@@ -21,7 +22,6 @@ from app.modules.analyzer.models import (
     UnknownTarget,
     Window,
 )
-from app.modules.investigator.topology import ifkey
 
 
 def _label(link: Link) -> str:
