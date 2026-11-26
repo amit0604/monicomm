@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.core import auth
 from app.core.config import get_settings
+from app.modules.admin.auth_methods import router as admin_auth_router
 from app.modules.admin.router import router as admin_router
 from app.modules.admin.users import router as admin_users_router
 from app.modules.analyzer.router import router as analyzer_router
@@ -72,6 +73,7 @@ app.include_router(chat_router)
 app.include_router(analyzer_router)
 app.include_router(admin_router)
 app.include_router(admin_users_router)
+app.include_router(admin_auth_router)
 app.include_router(mapper_router)
 
 

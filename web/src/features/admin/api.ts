@@ -1,4 +1,4 @@
-// Mirrors api/app/modules/admin/router.py. The API key is sent, never received.
+// Mirrors api/app/modules/admin/router.py and auth_methods.py. Secrets are sent, never received.
 import { ApiError, request } from "../../lib/api";
 
 export interface LLMView {
@@ -35,20 +35,48 @@ function codeOf(status: number, detail: string | undefined): ErrorCode {
   return "failed";
 }
 
-async function call<T>(method: string, path = "", form?: LLMForm): Promise<T> {
+async function call<T>(method: string, url: string, body?: unknown): Promise<T> {
   try {
-    return await request<T>(`/api/v1/admin/llm${path}`, {
+    return await request<T>(url, {
       method,
-      body: form && JSON.stringify(form),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (e) {
     throw e instanceof ApiError ? new AdminError(codeOf(e.status, e.detail)) : e;
   }
 }
 
+const LLM = "/api/v1/admin/llm";
 export const llmApi = {
-  read: () => call<LLMView>("GET"),
-  save: (form: LLMForm) => call<LLMView>("PUT", "", form),
-  reset: () => call<LLMView>("DELETE"),
-  test: (form: LLMForm) => call<CheckResult>("POST", "/test", form),
+  read: () => call<LLMView>("GET", LLM),
+  save: (form: LLMForm) => call<LLMView>("PUT", LLM, form),
+  reset: () => call<LLMView>("DELETE", LLM),
+  test: (form: LLMForm) => call<CheckResult>("POST", `${LLM}/test`, form),
+};
+
+// Login methods (LDAP, SSO). The view holds every setting except the secret.
+export type AuthSection = "ldap" | "sso";
+export type AuthValue = string | boolean;
+export interface AuthView {
+  [field: string]: AuthValue | undefined;
+  enabled: boolean;
+  saved: boolean;
+  secret_source: "none" | "env" | "saved";
+  callback_url?: string; // SSO: the address to register at the identity provider
+}
+export interface AuthTestResult {
+  ok: boolean;
+  error: string | null;
+  user: { dn: string; role: string } | null; // LDAP: the looked-up test user
+}
+
+export const authApi = (section: AuthSection) => {
+  const url = `/api/v1/admin/auth/${section}`;
+  return {
+    read: () => call<AuthView>("GET", url),
+    save: (form: Record<string, AuthValue | null>) => call<AuthView>("PUT", url, form),
+    reset: () => call<AuthView>("DELETE", url),
+    test: (form: Record<string, AuthValue | null>) =>
+      call<AuthTestResult>("POST", `${url}/test`, form),
+  };
 };

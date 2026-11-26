@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Button, ErrorState, Panel, Skeleton, StatusPill } from "../../components/ui";
 import { useI18n } from "../../i18n";
 import type { MessageKey } from "../../i18n/en";
-import { AdminError, llmApi, type LLMForm, type LLMView } from "./api";
+import { llmApi, type LLMForm, type LLMView } from "./api";
+import { errorKey, NoticeLine, useAction } from "./useAction";
 import "./admin.css";
 
 const KEY_LABEL: Record<LLMView["key_source"], MessageKey> = {
@@ -12,21 +13,12 @@ const KEY_LABEL: Record<LLMView["key_source"], MessageKey> = {
   saved: "admin.key_saved",
 };
 
-interface Notice {
-  ok: boolean;
-  key: MessageKey;
-}
-
-const errorKey = (e: unknown): MessageKey =>
-  e instanceof AdminError ? `admin.error.${e.code}` : "admin.error.failed";
-
 export function AdminPage() {
   const { t } = useI18n();
   const [view, setView] = useState<LLMView | null>(null);
   const [loadError, setLoadError] = useState<MessageKey | null>(null);
   const [apiKey, setApiKey] = useState("");
-  const [busy, setBusy] = useState<"test" | "save" | "reset" | null>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const { busy, notice, setNotice, run } = useAction<"test" | "save" | "reset">();
 
   const load = useCallback(() => {
     setLoadError(null);
@@ -50,17 +42,6 @@ export function AdminPage() {
     setView({ ...view, ...patch });
     setNotice(null);
   };
-
-  async function run(name: "test" | "save" | "reset", work: () => Promise<Notice>) {
-    setBusy(name);
-    setNotice(null);
-    try {
-      setNotice(await work());
-    } catch (e) {
-      setNotice({ ok: false, key: errorKey(e) });
-    }
-    setBusy(null);
-  }
 
   const test = () =>
     run("test", async () => {
@@ -177,11 +158,7 @@ export function AdminPage() {
               )}
             </div>
           </fieldset>
-          {notice && (
-            <div role={notice.ok ? "status" : "alert"}>
-              <StatusPill status={notice.ok ? "ok" : "critical"} label={t(notice.key)} />
-            </div>
-          )}
+          <NoticeLine notice={notice} />
         </form>
       </Panel>
     </div>

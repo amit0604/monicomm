@@ -3,6 +3,7 @@ import { PanelLeftClose, PanelLeftOpen, Radar, Settings } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { useSession } from "../../features/auth/session";
 import type { PageId } from "../../modules";
+import { Account } from "./Account";
 import { MODULE_LIST } from "./modules";
 
 export function SideNav({
@@ -72,14 +73,17 @@ export function SideNav({
         </ul>
       </nav>
 
-      <button
-        type="button"
-        className="sidenav__toggle"
-        onClick={onToggle}
-        aria-label={collapsed ? t("nav.expand") : t("nav.collapse")}
-      >
-        <ToggleIcon size={20} aria-hidden="true" className="flip-rtl" />
-      </button>
+      <div className="sidenav__footer">
+        <Account collapsed={collapsed} />
+        <button
+          type="button"
+          className="sidenav__toggle"
+          onClick={onToggle}
+          aria-label={collapsed ? t("nav.expand") : t("nav.collapse")}
+        >
+          <ToggleIcon size={20} aria-hidden="true" className="flip-rtl" />
+        </button>
+      </div>
     </aside>
   );
 }

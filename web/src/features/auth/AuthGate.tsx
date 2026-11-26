@@ -1,6 +1,5 @@
-import { LogOut } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { Button, ErrorState } from "../../components/ui";
+import { ErrorState } from "../../components/ui";
 import { useI18n } from "../../i18n";
 import { LoginPage } from "./LoginPage";
 import { SessionContext, type User } from "./session";
@@ -70,15 +69,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
       return <LoginPage onUser={(user) => setState({ is: "signed_in", user })} />;
     case "signed_in":
       return (
-        <SessionContext value={state.user}>
+        <SessionContext value={{ user: state.user, signOut: () => void leave() }}>
           {children}
-          <div className="login__user">
-            <bdi>{state.user.name}</bdi>
-            <Button size="sm" onClick={() => void leave()}>
-              <LogOut size={16} aria-hidden="true" />
-              {t("auth.sign_out")}
-            </Button>
-          </div>
         </SessionContext>
       );
   }

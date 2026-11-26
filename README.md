@@ -31,7 +31,9 @@ The collectors (syslog and SNMP servers) are separate deployments in `collector/
 - **Incident Investigator input:** set `MONICOMM_INVESTIGATOR_INGEST_DIR` and mount the collectors' dev-ingest
   directory in `docker-compose.yml` (see the comment there). Empty = listener off.
 - **Login:** off by default (`MONICOMM_AUTH_PROVIDER=none`). For local users set it to `local` and create the first
-  admin with `docker compose exec api python -m app.create_user admin`.
+  admin with `docker compose exec api python -m app.create_user admin`. LDAP / Active Directory and SSO (OpenID Connect)
+  are set on the Admin page (with Test connection) or in `.env`; start with
+  `docker compose -f docker-compose.yml -f docker-compose.directory.yml up -d` so the api can reach them.
 - **Shared code:** graph and link-load logic for the Analyzer and Investigator is in `api/app/core/graph.py`;
   web API calls go through `web/src/lib/api.ts`.
 - **Language:** English by default; the top bar switches to Hebrew. All UI text lives in `web/src/i18n/`.

@@ -7,6 +7,7 @@ import { Button, EmptyState } from "./components/ui";
 import { AnalyzerPage } from "./features/analyzer/AnalyzerPage";
 import { AdminPage } from "./features/admin/AdminPage";
 import { AdminUsers } from "./features/admin/AdminUsers";
+import { LoginMethods } from "./features/admin/LoginMethods";
 import { AuthGate } from "./features/auth/AuthGate";
 import { ChatPage } from "./features/chat/ChatPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
@@ -42,6 +43,7 @@ function Shell() {
           <>
             <AdminPage />
             <AdminUsers />
+            <LoginMethods />
           </>
         );
       case "dashboard":
