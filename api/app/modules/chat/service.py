@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.ai import llm_client, llm_settings
 from app.modules.dashboard.models import DataSource, DeviceDetails, DeviceStatus
-from app.modules.dashboard.service import newest_first
+from app.modules.dashboard.service import newest_first, without_live
 
 PROMPT = Path(__file__).resolve().parents[2] / "ai" / "prompts" / "chat_live.md"
 MAX_QUESTION_CHARS = 2000
@@ -168,8 +168,12 @@ def collect_context(source: DataSource) -> tuple[str, Context]:
 async def answer(source: DataSource, messages: list[Message]) -> ChatReply:
     settings = llm_settings.current()
     history = prepare_history(messages)
-    if settings.llm_provider == "gemini" and source.source != "demo":
-        raise ExternalModelRefused
+    if settings.llm_provider == "gemini":
+        # a cloud model only ever sees demo data: live devices are dropped from a mixed source
+        demo = without_live(source)
+        if demo is None:
+            raise ExternalModelRefused
+        source = demo
     data, context = collect_context(source)
     question = f"<MONICOMM_DATA>\n{data}\n</MONICOMM_DATA>\n\nQuestion:\n{history[-1].content}"
     reply = await llm_client.chat(

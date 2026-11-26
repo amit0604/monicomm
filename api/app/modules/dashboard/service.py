@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from app.core.config import get_settings
 from app.modules.dashboard.demo import DemoSource
+from app.modules.dashboard.live import CombinedSource, LiveSource
 from app.modules.dashboard.models import (
     STATUSES,
     DataSource,
@@ -25,11 +26,21 @@ class NoDataSource(RuntimeError):
 
 
 def get_source() -> DataSource:
-    """The only source so far is demo data, which must never appear on a real site."""
+    """Demo data (dev only, never on a real site), live collector data, or in dev both together."""
     settings = get_settings()
+    ingest = settings.investigator_ingest_dir
     if settings.demo_data and settings.env == "dev":
-        return DemoSource()
+        return CombinedSource(DemoSource(), LiveSource(ingest)) if ingest else DemoSource()
+    if ingest:
+        return LiveSource(ingest)
     raise NoDataSource
+
+
+def without_live(source: DataSource) -> DataSource | None:
+    """The demo-only part of a source, for a model outside the closed network. None = no demo."""
+    if isinstance(source, CombinedSource):
+        return source.demo
+    return source if source.source == "demo" else None
 
 
 def newest_first(events: list[Event]) -> list[Event]:

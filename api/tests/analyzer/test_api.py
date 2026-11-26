@@ -180,7 +180,7 @@ def test_get_source_demo_only_in_dev(monkeypatch):
     demo.DemoTopology = FakeSource
     monkeypatch.setitem(sys.modules, demo.__name__, demo)
     for demo_data, env, ok in ((True, "dev", True), (True, "prod", False), (False, "dev", False)):
-        settings = types.SimpleNamespace(demo_data=demo_data, env=env)
+        settings = types.SimpleNamespace(demo_data=demo_data, env=env, investigator_ingest_dir="")
         monkeypatch.setattr(service, "get_settings", lambda s=settings: s)
         if ok:
             assert isinstance(service.get_source(), FakeSource)

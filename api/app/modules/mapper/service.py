@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.graph import util_status
 from app.modules.dashboard.models import DataSource, Device, Interface
 from app.modules.mapper.demo import DemoLinks
+from app.modules.mapper.live import CombinedLinks, LiveLinks
 from app.modules.mapper.models import (
     Endpoint,
     Link,
@@ -28,10 +29,13 @@ class NoLinkSource(RuntimeError):
 
 
 def get_link_source() -> LinkSource:
-    """The only link list so far is demo data, which must never appear on a real site."""
+    """Same rule as the Dashboard's get_source(): demo (dev only), live, or in dev both."""
     settings = get_settings()
+    ingest = settings.investigator_ingest_dir
     if settings.demo_data and settings.env == "dev":
-        return DemoLinks()
+        return CombinedLinks(DemoLinks(), LiveLinks(ingest)) if ingest else DemoLinks()
+    if ingest:
+        return LiveLinks(ingest)
     raise NoLinkSource
 
 

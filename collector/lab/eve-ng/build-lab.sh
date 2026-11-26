@@ -51,8 +51,10 @@ chmod 600 "$WORK/moni-snmp.node.env"
 mkdir -p "$Q/linux-moni-base"
 qemu-img convert -O qcow2 "$WORK/$IMG" "$Q/linux-moni-base/virtioa.qcow2"
 args=(
-  --install snmpd,snmp,rsyslog
+  --install snmpd,snmp,rsyslog,lldpd
   --run-command 'touch /etc/cloud/cloud-init.disabled'
+  # lldpd: LLDP (+ CDP, -c) neighbors, exported to snmpd over AgentX on localhost (see moni-node-setup)
+  --write '/etc/default/lldpd:DAEMON_ARGS="-x -X tcp:127.0.0.1:705 -c"'
   --upload "$HERE/node/moni-node-setup:/usr/local/sbin/moni-node-setup" --chmod 0755:/usr/local/sbin/moni-node-setup
   --upload "$HERE/node/moni-sim:/usr/local/bin/moni-sim" --chmod 0755:/usr/local/bin/moni-sim
   --upload "$HERE/node/moni-node-setup.service:/etc/systemd/system/moni-node-setup.service"
@@ -105,6 +107,10 @@ qopts="-machine type=pc,accel=kvm -vga std -usbdevice tablet -boot order=cd -cpu
   echo '</lab>'
 } >"$LAB"
 $W -a fixpermissions >/dev/null 2>&1 || true
+
+# A Linux bridge drops LLDP frames (01:80:c2:00:00:0e) by default. Let Cloud0 (pnet0) forward them so the
+# nodes see each other. Not persistent across an EVE-NG reboot: re-run, or see README.md.
+echo 16384 > /sys/class/net/pnet0/bridge/group_fwd_mask || echo "warning: could not enable LLDP forwarding on pnet0"
 
 echo "== start nodes"
 for id in $(seq 1 ${#NODES[@]}); do
